@@ -169,6 +169,10 @@ button{font:inherit;color:inherit}
 .rap-b .lbtn{margin:0;display:flex;align-items:center;justify-content:center;text-decoration:none}
 .rap-non{display:block;margin:8px auto 0;min-height:44px;padding:0 12px;background:none;border:0;color:var(--muted);font-family:var(--sans);font-size:.82rem;text-decoration:underline;cursor:pointer}
 .rappel .merci{margin:0}
+.intro-v{position:fixed;inset:0;z-index:60;background:#000;display:flex;align-items:center;justify-content:center}
+.intro-v video{width:100%;height:100%;object-fit:contain;background:#000}
+.intro-skip{position:absolute;top:max(16px,env(safe-area-inset-top));right:16px;min-height:44px;padding:0 18px;border-radius:999px;
+  border:1px solid rgba(242,235,224,.35);background:rgba(0,0,0,.55);color:var(--ink);font-family:var(--sans);font-size:.88rem;cursor:pointer}
 
 /* 1. La rose */
 .rose-g{position:absolute;inset:0}
@@ -612,6 +616,7 @@ if(T.test){
   if(h){ T.h = +h[1]; T.mi = +(h[2] || 0); }
   T.rencontre = parseDate(Q.get('rencontre'));
   T.geste = +Q.get('geste') || 0;
+  T.intro = Q.get('intro');   // 1 = revoir l'intro, 0 = la sauter
 }
 let OFFSET = 0;
 if(T.date || T.h != null){
@@ -1259,7 +1264,44 @@ if(!RM){
 // Minuit ou 21 h passés pendant que la page est ouverte : on recharge le grimoire
 setInterval(() => { if(!document.hidden && ST.key && ST.key !== iso(clock()) + '|' + unlocked()) boot(); }, 15000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden && ST.key && ST.key !== iso(clock()) + '|' + unlocked()) boot(); });
-boot();
+/* ---------- Première visite : la vidéo de bienvenue ----------
+   Un toucher est nécessaire pour que le téléphone accepte le son.
+   Vue (ou passée) une fois, elle ne revient plus. */
+function showIntro(){
+  screen();
+  const d = el('section', 'screen');
+  d.innerHTML = CAT_SLEEP + '<h1 class="msg">Un grimoire t\'attend, princesse.</h1>'
+    + '<p class="sur">Une petite vidéo de bienvenue : 30 secondes, avec le son.</p>';
+  let fini = false;
+  const done = () => {
+    if(fini) return; fini = true;
+    S.intro = 1; saveS();
+    const w = document.querySelector('.intro-v');
+    if(w){ const v = w.querySelector('video'); try{ v.pause(); }catch(e){} w.remove(); }
+    boot();
+  };
+  const go = el('button', 'lbtn rouge', 'Ouvrir le grimoire'); go.type = 'button'; go.style.marginTop = '22px';
+  const skip = el('button', 'rap-non', 'Passer l\'introduction'); skip.type = 'button';
+  go.onclick = () => {
+    const w = el('div', 'intro-v');
+    w.innerHTML = '<video playsinline preload="auto" src="intro.mp4" aria-describedby="intro-txt"></video>'
+      + '<button class="intro-skip" type="button">Passer</button>'
+      + '<p id="intro-txt" class="sr-only">Une moto roule de nuit. Dans la lumière du phare : Bienvenue, princesse. Ce grimoire est à toi. '
+      + 'Chaque soir, à 21 h, une page s\'éveille. Un geste, une citation, un mot de moi. Un moment rien qu\'à toi, pour souffler. '
+      + 'La moto s\'arrête devant un grimoire qui s\'ouvre : Aujourd\'hui, quelqu\'un a pensé à toi. Demain aussi. Dieu.</p>';
+    document.body.append(w);
+    const v = w.querySelector('video');
+    v.onended = done; v.onerror = done;
+    w.querySelector('.intro-skip').onclick = done;
+    const pr = v.play();
+    if(pr) pr.catch(() => { v.muted = true; v.play().catch(done); });
+    focusSoft(w.querySelector('.intro-skip'));
+  };
+  skip.onclick = done;
+  d.append(go, skip);
+  view.append(d);
+}
+if((!S.intro && T.intro !== '0') || T.intro === '1') showIntro(); else boot();
 })();
 </script>
 </body>
