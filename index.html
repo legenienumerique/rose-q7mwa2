@@ -351,7 +351,7 @@ body.nobox #box{display:none}
 .rb b{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#ff3346;box-shadow:0 0 10px #ff3346}
 .lane-hint{position:absolute;z-index:4;left:0;right:0;bottom:38%;display:flex;justify-content:space-between;padding:0 14px;pointer-events:none;font-size:3.2rem;color:rgba(255,240,220,.55);text-shadow:0 0 20px rgba(0,0,0,.6);transition:opacity 1s}
 .lane-hint.off{opacity:0}
-.arrive{position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(circle at 50% 40%,rgba(255,220,170,.9),rgba(255,160,110,.5) 60%,rgba(80,20,30,.3));animation:arrive 1.6s ease forwards;opacity:0}
+.arrive{position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(circle at 50% 40%,rgba(255,220,170,.9),rgba(255,160,110,.5) 60%,rgba(80,20,30,.3));animation:arrive 1s ease forwards;opacity:0}
 @keyframes arrive{to{opacity:1}}
 .picnic .picsky{background:linear-gradient(#1f0820 0%,#5a1a35 30%,#c0553a 52%,#f2a463 60%,#f2a463 100%)}
 .picnic svg{position:absolute;inset:0;width:100%;height:100%}
@@ -1582,7 +1582,7 @@ function Runner(parent){
       const before = st.x;
       st.x += (target - st.x) * Math.min(1, dt * 7);
       st.tilt += (((st.x - before) / Math.max(dt, .001)) * .06 + ps.curve * sp * -.035 - st.tilt) * Math.min(1, dt * 8);
-      if(st.finishing){ st.speed = Math.max(MAX * .06, st.speed - MAX * .55 * dt); if(st.pos >= END){ st.speed = 0; st.done = true; st.running = false; } }
+      if(st.finishing){ st.speed = Math.max(MAX * .35, st.speed - MAX * .6 * dt); if(st.pos >= END){ st.speed = 0; st.done = true; st.running = false; } }
       else st.speed = Math.min(MAX, st.speed + ACC * dt);
       ps.sprites.forEach(s => {
         if(s.type === 'petal' && !s.gone && Math.abs(st.x - s.offset) < .3){ s.gone = true; st.petals++; st.glow = .5; Snd.sfx('chime', {n:st.petals}); buzz(10); }
@@ -1590,7 +1590,7 @@ function Runner(parent){
       st.skyX += ps.curve * sp * dt * 60;
       const prog = st.pos / END;
       ROMAN_MOTO.forEach((rm, i) => { if(prog >= rm[0] && !st.captions[i]){ st.captions[i] = true; st.cap = {text:rm[1], t0:st.t}; announce(rm[1]); } });
-      if(prog >= .95 && !st.finishing) st.finishing = true;
+      if(prog >= .985 && !st.finishing) st.finishing = true;
       Snd.rev(st.speed / MAX);
     }
     render(dt);
@@ -1634,7 +1634,7 @@ function gameRide(g, R){
       rbI.style.width = (p * 100).toFixed(1) + '%'; rbB.style.left = (p * 100).toFixed(1) + '%';
       if(R.st.done){
         const a = el('div', 'arrive'); g.area.append(a); Snd.scene({wind:.2});
-        setTimeout(() => res('win'), 1700); return;
+        setTimeout(() => res('win'), 1100); return;
       }
       requestAnimationFrame(tick);
     };
@@ -2028,7 +2028,7 @@ async function epilogue(){
   await slideTo("Glisse pour détacher ton bon");
   Snd.sfx('tear'); buzz([15, 15, 15, 15, 40]); tk.classList.add('torn');
   announce('Bon pour ' + BON.lignes.join(' ') + ' ' + BON.validite + ' Signé : Dieu.');
-  await line("Au dos, d'une écriture plus pressée : « Je n'ai pas oublié ta proposition. Celle où je devais te manger. Considère que j'ai très faim. »", {cls:'quote'});
+  await line("Au dos, d'une écriture plus pressée : « Je n'ai pas oublié ta proposition. Celle où je devais te manger. »", {cls:'quote'});
   await line(BON.ps, {cls:'quote', wait:false});
   const keep = btn('Garder le bon dans mes photos', 'primary'); keep.onclick = () => saveBon(keep);
   const again = btn('Relire le conte depuis le début', 'ghost'); again.onclick = restart;
