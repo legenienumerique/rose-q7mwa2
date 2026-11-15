@@ -1,0 +1,1225 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0a0a">
+<title>Le Grimoire</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%80%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500&display=swap">
+<script>
+/* =========================================================
+   RÉGLAGES — la seule partie à modifier
+   ========================================================= */
+const URL_FLUX_CSV = "";        // lien CSV publié de l'onglet Flux (entre les guillemets)
+const HEURE_DEBLOCAGE = 21;     // heure locale du téléphone
+const DATE_RENCONTRE = null;    // ex. "2026-12-05" (avec les guillemets) quand on aura fixé la date
+const INSTAGRAM_DIEU = "only.goldrider";    // ton nom d'utilisateur Instagram, sans @ (le bouton ouvre ta conversation)
+const NUMERO_DIEU_MASQUE = "MTc5NzY3MjY2MzM=";   // ton numéro, brouillé pour les robots (pour le changer, demande à Claude)
+                                // (les deux vides = elle choisit à qui envoyer avec le bouton « Partager » du téléphone)
+
+/* « Et toi, ce soir ? » — tout est facultatif, elle peut tout passer. */
+const HUMEURS = ["Apaisée", "Joueuse", "Rêveuse", "Troublée", "Mélancolique", "Fatiguée", "Le cœur qui bat", "Je ne sais pas"];
+const CURSEUR_DEFAUT = "Ce soir, ton cœur est…|calme|en feu";   // remplacé par la colonne « curseur » du Sheet
+
+/* Texte de la page finale (la veille de la rencontre).
+   Conseillé : laisser "" et mettre ton texte dans le Sheet, à la date de la veille (colonne citation).
+   Il reste ainsi secret jusqu'au soir même. Si tu l'écris ici, il est caché dans le code de la page. */
+const TEXTE_FINAL = "";
+
+/* Musiques de fond (dossier grimoire/musique). NE PAS MODIFIER À LA MAIN :
+   cette liste est réécrite par  python grimoire/preparer-musiques.py
+   calme = seconde jouée doucement pendant le geste · envol = seconde enchaînée quand la citation apparaît */
+/* MUSIQUES:DEBUT (liste générée automatiquement) */
+const MUSIQUES = [
+  {
+    "fichier": "desire.mp3",
+    "titre": "Meg Myers - Desire [Hucci Remix]",
+    "ambiance": "douce",
+    "calme": 114.5,
+    "envol": 131.0
+  },
+  {
+    "fichier": "let-the-world-burn.mp3",
+    "titre": "Chris Grey - LET THE WORLD BURN",
+    "ambiance": "intense",
+    "calme": 34.0,
+    "envol": 46.5
+  }
+];
+/* MUSIQUES:FIN */
+
+/* Pages à garder pour après la rencontre. Désactivées : mets true pour qu'elles s'affichent
+   les soirs qui suivent la rencontre (J+1, J+2, J+3). */
+const APRES_RENCONTRE_ACTIF = false;
+const APRES_RENCONTRE = [
+  { citation: "Car, vois-tu, chaque jour je t'aime davantage, / Aujourd'hui plus qu'hier et bien moins que demain.", auteur: "Rosemonde Gérard", oeuvre: "L'Éternelle Chanson", mot: "" },
+  { citation: "Aimer ou avoir aimé, cela suffit. Ne demandez rien ensuite.", auteur: "Victor Hugo", oeuvre: "Les Misérables", mot: "" },
+  { citation: "Voici des fruits, des fleurs, des feuilles et des branches, / Et puis voici mon cœur qui ne bat que pour vous.", auteur: "Paul Verlaine", oeuvre: "Green", mot: "" }
+];
+</script>
+<style>
+:root{
+  --bg:#0a0a0a; --ink:#f2ebe0; --muted:#b9ae9f;
+  --blood:#8b0000; --blood2:#b3001b; --red-text:#e8536a; --gold:#c9a96e;
+  --line:rgba(242,235,224,.22);
+  --serif:"Cormorant Garamond","Cormorant",Garamond,"Times New Roman",Georgia,serif;
+  --sans:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--serif);font-weight:500;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button{font:inherit;color:inherit}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
+[hidden]{display:none!important}
+
+.wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:0 16px calc(40px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:2px;padding-top:env(safe-area-inset-top);min-height:56px;
+  background:linear-gradient(var(--bg) 78%,rgba(10,10,10,0))}
+.brand{flex:1;min-height:48px;padding:0;background:none;border:0;text-align:left;cursor:pointer;font-style:italic;font-size:1.25rem;letter-spacing:.03em;color:var(--gold)}
+.tbtn{min-height:48px;min-width:48px;padding:0 10px;background:none;border:0;border-radius:10px;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:var(--sans);font-size:.8rem}
+.tbtn svg{width:19px;height:19px}
+.tbtn[aria-pressed="true"]{color:var(--gold)}
+.jx{margin:0 0 4px;text-align:center;font-family:var(--sans);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--red-text)}
+
+/* Pétales qui tombent */
+#petals{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.petal{position:absolute;top:-40px;left:var(--x);animation:fall var(--d) linear var(--dl) infinite}
+.petal i{display:block;width:var(--s);height:calc(var(--s)*1.25);opacity:var(--o);background:radial-gradient(circle at 30% 30%,#7a0a16,#3e0309 75%);border-radius:85% 0 85% 0;animation:sway var(--sw) ease-in-out infinite alternate}
+@keyframes fall{to{transform:translateY(calc(100vh + 80px))}}
+@keyframes sway{from{transform:translateX(-22px) rotate(-35deg)}to{transform:translateX(22px) rotate(55deg)}}
+
+/* ---------- Une page ---------- */
+.num{margin:6px 0 12px;text-align:center;font-weight:600}
+.num span{display:block;font-family:var(--sans);font-weight:500;font-size:.68rem;letter-spacing:.34em;text-transform:uppercase;color:var(--muted)}
+.num b{display:block;font-weight:600;font-size:2.5rem;line-height:1.05;color:var(--gold)}
+.stage{position:relative;height:250px;border-radius:18px;overflow:hidden;border:1px solid rgba(201,169,110,.18);
+  background:radial-gradient(ellipse at 50% 30%,#1d1013,#070505 75%);touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.stage.tall{height:330px}
+.hint{margin:12px 0 8px;min-height:1.4em;text-align:center;font-family:var(--sans);font-size:.88rem;line-height:1.4;color:var(--muted)}
+.alt,.lbtn{display:block;margin:0 auto;min-height:48px;padding:0 20px;border-radius:999px;border:1px solid var(--line);background:rgba(242,235,224,.04);
+  color:var(--ink);font-family:var(--sans);font-size:.88rem;cursor:pointer}
+.alt:hover,.lbtn:hover{background:rgba(242,235,224,.1)}
+.note{margin:14px 0 0;text-align:center;font-style:italic;font-size:1.05rem;color:var(--muted)}
+
+.reading{position:relative;isolation:isolate;margin-top:22px;padding:22px 8px 10px;border-radius:18px;outline:none}
+.reading::before{content:"";position:absolute;inset:-20px -16px -10px;z-index:-1;pointer-events:none;opacity:0;transition:opacity 1.4s}
+.reading[data-light="beam"]::before{background:radial-gradient(ellipse 75% 55% at 50% 0%,rgba(255,236,190,.2),transparent 72%);opacity:1}
+.reading[data-light="candle"]::before{background:radial-gradient(ellipse 70% 55% at 50% 0%,rgba(255,170,90,.2),transparent 72%);opacity:1}
+.cit{margin:0;font-style:italic;font-size:clamp(1.5rem,6.6vw,1.9rem);line-height:1.3;white-space:pre-line;text-align:center;text-wrap:balance}
+.src{margin:14px 0 0;text-align:center;font-family:var(--sans);font-size:.78rem;letter-spacing:.03em;line-height:1.5;color:var(--muted)}
+.src i{font-family:var(--serif);font-size:1.12em}
+.mot{margin:30px auto 0;max-width:30em;padding:18px 20px 12px;transform:rotate(-1.2deg);border-radius:3px;
+  background:linear-gradient(#f1e8d5,#e4d5b6);color:#2a1c12;box-shadow:0 10px 26px rgba(0,0,0,.55)}
+.mot p{margin:0;font-style:italic;font-size:1.25rem;line-height:1.4;white-space:pre-line}
+.mot .sig{margin-top:10px;text-align:right;font-size:1.35rem;font-weight:600;color:#8b0000}
+.mot .sig::before{content:"— "}
+.mot.final p:first-child{font-size:1.3rem}
+.last{margin:30px 0 0;text-align:center;font-style:italic;font-size:clamp(1.45rem,6.4vw,1.8rem);line-height:1.3;color:var(--red-text)}
+.reading.show>*{animation:up .9s ease both}
+.reading.show>:nth-child(2){animation-delay:.45s}
+.reading.show>:nth-child(3){animation-delay:.9s}
+.reading.show>:nth-child(4){animation-delay:1.3s}
+.reading.nofade>*,.reading.typed>.cit{animation:none!important}
+.reading.typing .src,.reading.typing .mot{opacity:0}
+@keyframes up{from{opacity:0;transform:translateY(10px)}}
+.mot{animation-name:upm!important}
+@keyframes upm{from{opacity:0;transform:translateY(10px) rotate(-1.2deg)}}
+.after{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:30px}
+
+/* La réponse de Dieu (en haut de page) */
+.lu{margin:0 0 18px;padding:14px 16px;border-left:2px solid var(--blood2);background:rgba(179,0,27,.07);border-radius:0 12px 12px 0}
+.lu .who{margin:0 0 6px;font-family:var(--sans);font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--red-text)}
+.lu p{margin:0;font-style:italic;font-size:1.15rem;line-height:1.4;white-space:pre-line}
+
+/* « Et toi, ce soir ? » */
+.toi{margin-top:38px;padding:22px 16px 18px;border-radius:18px;border:1px solid rgba(201,169,110,.28);background:linear-gradient(#140f0b,#0c0907)}
+.toi h2{margin:0;text-align:center;font-weight:600;font-style:italic;font-size:1.7rem;color:var(--gold)}
+.toi .sub{margin:4px 0 18px;text-align:center;font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+.toi fieldset{margin:0 0 22px;padding:0;border:0}
+.toi legend,.toi label.q{display:block;margin:0 0 10px;font-size:1.2rem;line-height:1.35}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:rgba(242,235,224,.04);color:var(--ink);font-family:var(--sans);font-size:.86rem;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--blood2);background:rgba(179,0,27,.28);color:#fff}
+.range{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+.range input{width:100%;height:44px;accent-color:var(--blood2);background:none}
+.range.vide input{opacity:.55}
+.rv{margin:6px 0 0;text-align:center;font-family:var(--sans);font-size:.8rem;color:var(--muted);min-height:1.2em}
+.toi textarea{display:block;width:100%;min-height:96px;padding:12px 14px;border-radius:12px;border:1px solid rgba(242,235,224,.3);background:#0f0d0c;
+  color:var(--ink);font-family:var(--serif);font-size:1.15rem;line-height:1.4;resize:vertical;-webkit-user-select:text;user-select:text}
+.toi textarea::placeholder{color:#8f867a;font-style:italic}
+.envoi{display:grid;gap:10px;margin-top:6px}
+.envoi .lbtn{width:100%;margin:0}
+.lbtn.rouge{border-color:var(--blood2);background:rgba(179,0,27,.3)}
+.lbtn.rouge:hover{background:rgba(179,0,27,.45)}
+.lbtn:disabled{opacity:.45;cursor:default}
+.sur{margin:12px 0 0;text-align:center;font-family:var(--sans);font-size:.76rem;line-height:1.45;color:var(--muted)}
+.merci{margin:14px 0 0;text-align:center;font-style:italic;font-size:1.15rem;color:var(--gold)}
+.after .lbtn{margin:0}
+
+/* 1. La rose */
+.rose-g{position:absolute;inset:0}
+.rose-g .stem{position:absolute;left:50%;top:46%;width:4px;height:60%;margin-left:-2px;background:#3f5236;border-radius:2px}
+.rose-g .leaf{position:absolute;left:50%;top:72%;width:46px;height:20px;margin-left:2px;background:#3f5236;border-radius:0 100% 0 100%;transform:rotate(-18deg)}
+.pet{position:absolute;left:50%;top:46%;width:64px;height:82px;margin:-82px 0 0 -32px;padding:0;border:0;cursor:pointer;
+  transform-origin:50% 100%;transform:rotate(var(--a)) translateY(6px);border-radius:50% 50% 46% 46%/62% 62% 38% 38%;
+  background:radial-gradient(ellipse at 50% 22%,#e0294a,#8b0016 60%,#4a000a);box-shadow:inset 0 -8px 12px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.3);
+  transition:translate 1.1s ease-in,rotate 1.1s ease-in,opacity 1.1s ease-in;touch-action:manipulation}
+.pet.off{translate:var(--fx) 240px;rotate:150deg;opacity:0;pointer-events:none}
+.pet:focus-visible{outline-offset:-4px}
+.bud{position:absolute;left:50%;top:46%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 40% 35%,#c0122e,#5a0010 70%);box-shadow:0 0 14px rgba(0,0,0,.7),inset 0 0 0 5px rgba(0,0,0,.15)}
+
+/* 2. Le sceau */
+.env{position:absolute;left:50%;top:50%;width:250px;height:160px;margin:-80px 0 0 -125px;border-radius:6px;perspective:700px;
+  background:linear-gradient(160deg,#efe4cc,#d6c39c);box-shadow:0 14px 30px rgba(0,0,0,.6)}
+.env .flap{position:absolute;left:0;right:0;top:0;height:96px;transform-origin:top;transition:transform .9s .45s;
+  background:linear-gradient(#e6d7b8,#c8b289);clip-path:polygon(0 0,100% 0,50% 100%)}
+.env.open .flap{transform:rotateX(180deg)}
+.seal,.ign{touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.seal{position:absolute;left:50%;top:96px;z-index:2;width:104px;height:104px;margin:-52px 0 0 -52px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer}
+.wax{position:absolute;inset:8px;display:grid;place-items:center;border-radius:47% 53% 50% 50%/52% 48% 52% 48%;
+  background:radial-gradient(circle at 35% 30%,#d0213f,#8b0000 55%,#4a0008);
+  box-shadow:inset 0 0 0 6px rgba(0,0,0,.18),inset 0 -4px 10px rgba(0,0,0,.4),0 4px 10px rgba(0,0,0,.5);
+  transform:scale(calc(1 + var(--p,0)*.08));filter:brightness(calc(1 + var(--p,0)*.5))}
+.wax span{font-size:2.7rem;font-weight:600;font-style:italic;color:rgba(40,0,6,.55);text-shadow:0 1px 0 rgba(255,140,150,.35)}
+.ring{position:absolute;left:-10px;top:-10px;width:calc(100% + 20px);height:calc(100% + 20px);transform:rotate(-90deg);pointer-events:none;transition:opacity .4s}
+.ring circle{fill:none;stroke-width:4}
+.rbg{stroke:rgba(201,169,110,.2)}
+.rfg{stroke:var(--gold);stroke-linecap:round}
+.seal.melt .wax{animation:melt 1.1s ease-in forwards}
+.seal.melt .ring,.ign.go .ring{opacity:0}
+@keyframes melt{30%{transform:scale(1.1,.92)}100%{transform:translateY(46px) scale(1.4,.15);filter:blur(4px);opacity:0}}
+.drip{position:absolute;top:58%;width:9px;height:0;border-radius:0 0 6px 6px;background:linear-gradient(#8b0000,#5a0010);opacity:0;pointer-events:none}
+.d1{left:30%}.d2{left:50%}.d3{left:67%}
+.seal.melt .drip{animation:drip 1.2s ease-in forwards}
+.seal.melt .d2{animation-delay:.15s}.seal.melt .d3{animation-delay:.3s}
+@keyframes drip{0%{opacity:1;height:0}70%{opacity:1;height:44px}100%{opacity:0;height:60px;transform:translateY(20px)}}
+.nudge{animation:nudge .45s}
+@keyframes nudge{25%{translate:-5px 0}75%{translate:5px 0}}
+
+/* 3. La moto */
+.moto-s{background:linear-gradient(#08080f 0%,#1a1018 58%,#23140f 64%,#0b0806 100%)}
+.moto-s svg.moto{position:absolute;left:0;bottom:16%;width:100%;height:auto;overflow:visible}
+.moto .beam{opacity:0;transition:opacity .6s}
+.moto-s.rev .beam{opacity:.35;animation:flick .14s steps(2) infinite}
+.moto-s.lit .beam{opacity:1;animation:none}
+.moto .hl{fill:#3a3428;transition:fill .4s}
+.moto-s.rev .hl,.moto-s.lit .hl{fill:#fff6d8}
+.moto-s.rev svg.moto{animation:shake .09s linear infinite}
+@keyframes flick{50%{opacity:.12}}
+@keyframes shake{50%{transform:translateY(1px)}}
+.road-l{position:absolute;left:0;right:0;bottom:9%;height:2px;background:repeating-linear-gradient(90deg,rgba(242,235,224,.3) 0 22px,transparent 22px 44px)}
+.ign{position:absolute;right:16px;top:16px;width:92px;height:92px;padding:0;border:0;border-radius:50%;cursor:pointer;
+  background:radial-gradient(circle at 40% 35%,#c4102c,#6a000f);box-shadow:0 0 18px rgba(179,0,27,.5);
+  font-family:var(--sans);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+.ign.press{transform:scale(.96)}
+.ign.go{opacity:.3;transition:opacity .8s}
+
+/* 4. La vitre */
+.reading.vitre{min-height:220px;border:1px solid rgba(242,235,224,.18);background:linear-gradient(#0d1114,#090b0d)}
+.fog{position:absolute;inset:0;width:100%;height:100%;z-index:3;border-radius:18px;touch-action:none;cursor:grab;transition:opacity .9s}
+.fog.gone{opacity:0;pointer-events:none}
+
+/* 5. Le chat noir */
+.chat-s{background:linear-gradient(#0d0d18 0%,#17141f 70%,#100c0c 71%,#0a0808 100%)}
+.moon{position:absolute;right:16%;top:14%;width:38px;height:38px;border-radius:50%;background:#efe6d2;box-shadow:0 0 30px rgba(239,230,210,.35)}
+.wcat{position:absolute;left:0;bottom:22%;width:118px;filter:drop-shadow(0 0 5px rgba(242,235,224,.35))}
+.wcat svg{display:block;width:100%;height:auto}
+.wcat .lg{transform-box:fill-box;transform-origin:50% 0}
+.wcat.walking .lg{animation:leg .36s ease-in-out infinite alternate}
+.wcat.walking .lg.b{animation-delay:-.18s}
+.wcat.walking .tl{animation:tail 1s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:100% 100%}
+@keyframes leg{from{transform:rotate(-20deg)}to{transform:rotate(20deg)}}
+@keyframes tail{to{transform:rotate(12deg)}}
+.lettre{position:absolute;left:50%;bottom:20%;width:124px;height:82px;margin-left:-62px;padding:0;border:0;border-radius:4px;cursor:pointer;perspective:500px;
+  background:linear-gradient(160deg,#efe4cc,#d6c39c);box-shadow:0 8px 20px rgba(0,0,0,.6);visibility:hidden;opacity:0;transform:translateY(-30px);
+  transition:opacity .5s,transform .6s cubic-bezier(.3,1.6,.5,1)}
+.lettre.in{visibility:visible;opacity:1;transform:none}
+.lettre .rabat{position:absolute;left:0;right:0;top:0;height:50px;transform-origin:top;transition:transform .7s;
+  background:linear-gradient(#e6d7b8,#c8b289);clip-path:polygon(0 0,100% 0,50% 100%)}
+.lettre .cachet{position:absolute;left:50%;top:40px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d0213f,#6a000f);transition:opacity .3s}
+.lettre .papier{position:absolute;left:8px;right:8px;top:6px;height:70px;background:#faf4e6;border-radius:2px;transition:transform .8s .35s}
+.lettre.open .rabat{transform:rotateX(180deg)}
+.lettre.open .cachet{opacity:0}
+.lettre.open .papier{transform:translateY(-58px)}
+
+/* 6. La bougie */
+.bougie-s .candle{position:absolute;left:50%;bottom:6px;width:110px;height:226px;margin-left:-55px;padding:0;border:0;background:none;cursor:pointer;border-radius:20px}
+.candle svg{display:block;width:100%;height:100%}
+.flame{opacity:0;transition:opacity .6s;transform-box:fill-box;transform-origin:50% 100%}
+.lit .flame{opacity:1;animation:flame 1.6s ease-in-out infinite}
+@keyframes flame{0%,100%{transform:scale(1,1) skewX(0)}25%{transform:scale(.95,1.07) skewX(2deg)}50%{transform:scale(1.04,.94) skewX(-2deg)}75%{transform:scale(.98,1.04) skewX(1deg)}}
+.halo{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.4s;
+  background:radial-gradient(circle at 50% 22%,rgba(255,180,90,.42),rgba(255,120,60,.1) 40%,transparent 70%)}
+.lit .halo{opacity:1}
+
+/* 7. La plume */
+.plume-s{background:radial-gradient(ellipse at 50% 60%,#241a12,#0a0705 75%)}
+.plume-s svg{position:absolute;left:50%;top:50%;width:260px;margin:-80px 0 0 -130px;overflow:visible}
+.plume-s .q{animation:write 2.4s ease-in-out infinite}
+.plume-s .ink{stroke-dasharray:240;stroke-dashoffset:240;animation:ink 2.4s linear infinite}
+.plume-s.stop .q,.plume-s.stop .ink{animation:none}
+.plume-s.stop .ink{stroke-dashoffset:0}
+@keyframes write{0%{transform:translate(0,0)}50%{transform:translate(150px,-2px)}100%{transform:translate(0,0)}}
+@keyframes ink{0%{stroke-dashoffset:240}50%{stroke-dashoffset:0}100%{stroke-dashoffset:0;opacity:0}}
+.nib{display:inline-block;width:2px;height:1em;margin-left:2px;vertical-align:-.12em;background:var(--gold);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* Page finale : la rose */
+.bigrose{position:absolute;left:50%;top:50%;height:88%;max-width:80%;transform:translate(-50%,-50%);transition:filter 2s}
+.bigrose .rose-fill{opacity:0;transition:opacity 1.6s ease}
+.bigrose.lit .rose-fill{opacity:1}
+.bigrose.lit{filter:drop-shadow(0 0 18px rgba(208,33,63,.65))}
+.bigrose .rs path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.bigrose .petals path{transition:stroke 1.6s}
+.bigrose.lit .petals path{stroke:#f4a3b0}
+
+/* ---------- Écrans : sommeil, encre, sommaire ---------- */
+.screen{padding-top:5vh;text-align:center}
+.art{display:block;width:180px;height:auto;margin:0 auto;filter:drop-shadow(0 0 6px rgba(242,235,224,.2))}
+.msg{margin:20px 0 12px;font-style:italic;font-size:clamp(1.5rem,6.6vw,1.85rem);line-height:1.3;text-wrap:balance}
+.cd{margin:0 0 28px;font-family:var(--sans);font-size:.88rem;color:var(--muted)}
+.cd b{display:block;margin-top:6px;font-family:var(--serif);font-weight:600;font-size:2.1rem;color:var(--gold);font-variant-numeric:tabular-nums}
+.zz{animation:zz 3s ease-in-out infinite}
+@keyframes zz{50%{transform:translate(4px,-6px);opacity:.4}}
+.som h1{margin:8px 0 4px;text-align:center;font-weight:600;font-size:2rem;color:var(--gold)}
+.som .sub{margin:0 0 20px;text-align:center;font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+.tiles{list-style:none;margin:0 0 28px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.tile{position:relative;width:100%;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  border-radius:12px;border:1px solid rgba(201,169,110,.3);background:linear-gradient(#17110c,#0e0a07);cursor:pointer}
+.tile b{font-size:1.6rem;font-weight:600;line-height:1;color:var(--gold)}
+.tile small{font-family:var(--sans);font-size:.72rem;color:var(--muted)}
+.tile .cachet{position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:47% 53% 50% 50%/52% 48% 52% 48%;
+  background:radial-gradient(circle at 35% 30%,#d0213f,#8b0000 60%,#4a0008);box-shadow:0 1px 3px rgba(0,0,0,.6)}
+.tile.fin b{color:var(--red-text)}
+.loading{padding-top:30vh;text-align:center;font-style:italic;font-size:1.3rem;color:var(--muted)}
+#testb{position:fixed;left:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:50;margin:0;padding:4px 8px;border-radius:6px;background:#3d0d19;
+  font-family:var(--sans);font-size:.68rem;color:var(--ink);pointer-events:none}
+
+/* Animations réduites */
+html.rm *,html.rm *::before,html.rm *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0s!important}
+html.rm #petals{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <button class="brand" id="bHome" type="button">Le Grimoire</button>
+    <button class="tbtn" id="bSom" type="button" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 5.5C6 4 9 4 12 6c3-2 6-2 9-.5V19c-3-1.5-6-1.5-9 .5-3-2-6-2-9-.5z"/><path d="M12 6v13.5"/></svg>Sommaire</button>
+    <button class="tbtn" id="bSon" type="button" aria-pressed="false" aria-label="Activer le son">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="w1" d="M16 9.5c1 1.4 1 3.6 0 5"/><path class="x1" d="M16.5 9.5l4 5m0-5l-4 5"/></svg></button>
+  </header>
+  <p class="jx" id="jx" hidden></p>
+  <main id="view"><p class="loading">On tourne les pages…</p></main>
+</div>
+<div id="petals" aria-hidden="true"></div>
+<div id="sr" class="sr-only" aria-live="polite"></div>
+<p id="testb" hidden></p>
+
+<script>
+(() => {
+"use strict";
+/* =========================================================
+   OUTILS
+   ========================================================= */
+const Q = new URLSearchParams(location.search);
+const RM = (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || Q.has('calme');
+if(RM) document.documentElement.classList.add('rm');
+const $ = s => document.querySelector(s);
+const view = $('#view'), sr = $('#sr');
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function announce(t){ sr.textContent = ''; setTimeout(() => { sr.textContent = t; }, 60); }
+function focusSoft(n){ if(n) try{ n.focus({preventScroll:true}); }catch(e){} }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pad = n => String(n).padStart(2, '0');
+const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+function parseDate(s){
+  s = String(s || '').trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return m[1] + '-' + pad(+m[2]) + '-' + pad(+m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return m[3] + '-' + pad(+m[2]) + '-' + pad(+m[1]);
+  return null;
+}
+const toDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const addDays = (s, n) => { const d = toDate(s); d.setDate(d.getDate() + n); return iso(d); };
+const daysBetween = (a, b) => Math.round((toDate(b) - toDate(a)) / 864e5);
+const fmtDay = s => { try{ return new Intl.DateTimeFormat('fr-FR', {day:'numeric', month:'short'}).format(toDate(s)); }catch(e){ return s; } };
+const fmtLong = s => { try{ return new Intl.DateTimeFormat('fr-FR', {weekday:'long', day:'numeric', month:'long'}).format(toDate(s)); }catch(e){ return s; } };
+function roman(n){
+  const v = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let r = ''; v.forEach(([a, s]) => { while(n >= a){ r += s; n -= a; } }); return r;
+}
+
+/* Vibration légère (Android). iPhone : petit retour haptique via un interrupteur invisible (iOS 18+). */
+const iosTap = (() => {
+  if('vibrate' in navigator) return null;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if(!ios) return null;
+  const lab = document.createElement('label'); lab.setAttribute('aria-hidden', 'true');
+  lab.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+  const inp = document.createElement('input'); inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.tabIndex = -1;
+  lab.append(inp); document.body.append(lab);
+  return () => { try{ lab.click(); }catch(e){} };
+})();
+function buzz(p){
+  try{
+    if(navigator.vibrate){ navigator.vibrate(p); return; }
+    if(!iosTap) return;
+    const pat = Array.isArray(p) ? p : [p]; let t = 0;
+    pat.forEach((d, i) => { if(i % 2 === 0) setTimeout(iosTap, t); t += d; });
+  }catch(e){}
+}
+
+/* =========================================================
+   SON (coupé par défaut)
+   ========================================================= */
+const Snd = {
+  ctx:null, on:false, eng:null,
+  init(){
+    if(this.ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return false;
+    const c = this.ctx = new AC(); this.m = c.createGain(); this.m.gain.value = .8; this.m.connect(c.destination);
+    document.addEventListener('visibilitychange', () => { if(document.hidden) c.suspend(); else if(this.on) c.resume(); });
+    return true;
+  },
+  noise(d){ const c = this.ctx, n = Math.floor(c.sampleRate * d), b = c.createBuffer(1, n, c.sampleRate), x = b.getChannelData(0);
+    for(let i = 0; i < n; i++) x[i] = Math.random() * 2 - 1; const s = c.createBufferSource(); s.buffer = b; return s; },
+  filt(type, f, q){ const x = this.ctx.createBiquadFilter(); x.type = type; x.frequency.value = f; if(q) x.Q.value = q; return x; },
+  osc(f, type){ const x = this.ctx.createOscillator(); x.type = type || 'sine'; x.frequency.value = f; return x; },
+  env(src, nodes, peak, a, dec, at){
+    const g = this.ctx.createGain(); let cur = src;
+    nodes.forEach(nd => { cur.connect(nd); cur = nd; }); cur.connect(g); g.connect(this.m);
+    g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + a); g.gain.exponentialRampToValueAtTime(.0001, at + a + dec);
+    src.start(at); src.stop(at + a + dec + .05);
+  },
+  play(name, o){
+    if(!this.on || !this.ctx) return; o = o || {};
+    const t = this.ctx.currentTime + .01;
+    try{
+      if(name === 'chime'){ const sc = [523, 587, 659, 784, 880, 1047, 1175]; const f = sc[(o.n || 0) % sc.length];
+        this.env(this.osc(f), [], .16, .005, .9, t); this.env(this.osc(f * 2), [], .05, .005, .5, t); }
+      else if(name === 'crack'){ this.env(this.noise(.2), [this.filt('highpass', 1800)], .5, .002, .12, t); this.env(this.noise(.3), [this.filt('bandpass', 600, 1.2)], .4, .004, .25, t + .06); }
+      else if(name === 'purr'){ const am = this.ctx.createGain(); am.gain.value = .5; const l = this.osc(24), lg = this.ctx.createGain(); lg.gain.value = .5;
+        l.connect(lg); lg.connect(am.gain); l.start(t); l.stop(t + 1.4); this.env(this.noise(1.4), [this.filt('lowpass', 380), am], .6, .15, 1.1, t); }
+      else if(name === 'flame'){ const f = this.filt('lowpass', 500); f.frequency.setValueAtTime(500, t); f.frequency.linearRampToValueAtTime(2200, t + .3); this.env(this.noise(.6), [f], .35, .05, .45, t); }
+      else if(name === 'paper'){ const f = this.filt('bandpass', 1500, .8); f.frequency.linearRampToValueAtTime(3800, t + .4); this.env(this.noise(.5), [f], .3, .03, .4, t); }
+      else if(name === 'scratch'){ this.env(this.noise(.06), [this.filt('highpass', 3000)], .06, .003, .04, t); }
+      else if(name === 'bloom'){ [523, 659, 784, 1047].forEach((f, i) => this.env(this.osc(f), [], .1, .4, 2.4, t + i * .18)); }
+      else if(name === 'rev'){ const x = this.osc(55, 'sawtooth'); x.frequency.setValueAtTime(55, t); x.frequency.exponentialRampToValueAtTime(150, t + .5); x.frequency.exponentialRampToValueAtTime(70, t + 1.4);
+        this.env(x, [this.filt('lowpass', 700, 2)], .22, .05, 1.4, t); }
+    }catch(e){}
+  },
+  idle(p){
+    if(!this.on || !this.ctx) return;
+    if(!this.eng){ const g = this.ctx.createGain(); g.gain.value = 0; const o = this.osc(42, 'sawtooth'), f = this.filt('lowpass', 500, 2);
+      o.connect(f); f.connect(g); g.connect(this.m); o.start(); this.eng = {o, g}; }
+    this.eng.o.frequency.value = 42 + p * 55; this.eng.g.gain.value = .06 + p * .08;
+  },
+  stopIdle(){ if(!this.eng) return; const e = this.eng; this.eng = null; try{ e.g.gain.setTargetAtTime(0, this.ctx.currentTime, .08); e.o.stop(this.ctx.currentTime + .4); }catch(x){} }
+};
+/* Musique de fond : deux lecteurs audio invisibles qui se relaient (fondus enchaînés).
+   Volume géré par Web Audio, donc les fondus marchent aussi sur iPhone. */
+const VOL_AMB = .32, VOL_PLEIN = .9;
+const Music = {
+  els:[], gains:[], idx:0, cur:null, want:null, mode:'amb', stopT:0,
+  setup(){
+    if(this.els.length) return true;
+    if(!MUSIQUES.length || !Snd.init()) return false;
+    for(let i = 0; i < 2; i++){
+      const a = new Audio(); a.preload = 'auto';
+      const g = Snd.ctx.createGain(); g.gain.value = 0;
+      try{ Snd.ctx.createMediaElementSource(a).connect(g); g.connect(Snd.m); }catch(e){ return false; }
+      a.addEventListener('ended', () => { if(i === this.idx && this.want) this.start(this.cur, this.cur.calme, 3, this.mode); });
+      this.els.push(a); this.gains.push(g);
+    }
+    return true;
+  },
+  ramp(i, to, sec){
+    const g = this.gains[i].gain, t = Snd.ctx.currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(to, t + (RM ? .05 : sec));
+  },
+  vol(){ return this.mode === 'plein' ? VOL_PLEIN : this.mode === 'nuit' ? VOL_NUIT : VOL_AMB; },
+  // Démarre « track » à la seconde « at » sur le lecteur libre, et éteint l'autre en fondu
+  start(track, at, sec, mode){
+    this.mode = mode || this.mode;
+    const j = 1 - this.idx, a = this.els[j], old = this.idx, url = 'musique/' + encodeURIComponent(track.fichier);
+    if(!a.src.endsWith(url)) a.src = url;
+    const seek = () => { try{ a.currentTime = Math.max(0, at); }catch(e){} };
+    if(a.readyState >= 1) seek(); else a.addEventListener('loadedmetadata', seek, {once:true});
+    // Certains serveurs refusent de sauter dans un fichier pas encore chargé : on réessaie quand il l'est
+    const retry = () => { if(Math.abs(a.currentTime - at) > 3 && a.currentTime < at) seek(); else a.removeEventListener('progress', retry); };
+    a.addEventListener('canplaythrough', retry, {once:true}); a.addEventListener('progress', retry);
+    setTimeout(() => a.removeEventListener('progress', retry), 15000);
+    this.gains[j].gain.value = 0;
+    const pr = a.play(); if(pr) pr.catch(() => {});
+    this.ramp(j, this.vol(), sec); this.ramp(old, 0, sec);
+    const o = this.els[old]; setTimeout(() => { if(this.idx !== old) o.pause(); }, sec * 1000 + 150);
+    this.idx = j; this.cur = track;
+  },
+  play(track, mode){
+    this.want = track; this.mode = mode; clearTimeout(this.stopT);
+    if(!Snd.on || !track || !this.setup()) return;
+    try{ Snd.ctx.resume(); }catch(e){}
+    const a = this.els[this.idx];
+    if(this.cur === track && !a.paused){ this.ramp(this.idx, this.vol(), 2); return; }
+    this.start(track, mode === 'plein' ? Math.max(0, track.envol - 1) : track.calme, 2.5, mode);
+  },
+  // La citation apparaît : on enchaîne sur l'envolée (ou on monte le volume si on y est déjà)
+  swell(){
+    if(this.mode === 'plein' && this.cur) return;
+    this.mode = 'plein';
+    if(!Snd.on || !this.cur || !this.els.length) return;
+    const t = this.els[this.idx].currentTime, e = this.cur.envol;
+    if(t >= e - 6 && t < e + 90) this.ramp(this.idx, VOL_PLEIN, 2.5);
+    else this.start(this.cur, Math.max(0, e - 1), 2.5, 'plein');
+  },
+  stop(){
+    this.want = null;
+    if(!this.els.length) return;
+    this.ramp(this.idx, 0, 1.2); const i = this.idx;
+    clearTimeout(this.stopT); this.stopT = setTimeout(() => { if(!this.want) this.els[i].pause(); }, 1300);
+  },
+  // iPhone : chaque lecteur doit être « débloqué » une fois par un toucher
+  unlock(){
+    this.els.forEach((a, i) => {
+      if(i === this.idx && !a.paused) return;
+      if(!a.src) a.src = 'musique/' + encodeURIComponent(MUSIQUES[0].fichier);
+      const pr = a.play(); if(pr) pr.then(() => { if(i !== this.idx || !this.want) a.pause(); }).catch(() => {});
+    });
+  }
+};
+let curTrack = null, curMode = 'amb';
+function music(track, mode){ curTrack = track; curMode = mode; if(track) Music.play(track, mode); else Music.stop(); }
+/* Accueil, grimoire endormi, encre pas sèche, sommaire : une chanson douce, tout bas,
+   sur son passage calme. Elle change chaque jour. */
+const VOL_NUIT = .22;
+function nuitTrack(){
+  if(!MUSIQUES.length) return null;
+  const pool = MUSIQUES.filter(m => m.ambiance === 'douce'), L = pool.length ? pool : MUSIQUES;
+  const j = Math.abs(daysBetween('2026-01-01', iso(clock())));
+  return L[j % L.length];
+}
+function inviteSon(d){
+  if(Snd.on || !MUSIQUES.length) return;
+  const b = el('button', 'lbtn invite-son', '♪ Allumer la musique'); b.type = 'button';
+  b.onclick = () => { if(!Snd.on) $('#bSon').click(); };
+  d.append(b);
+}
+document.addEventListener('visibilitychange', () => {
+  if(!Music.els.length) return;
+  const a = Music.els[Music.idx];
+  if(document.hidden) a.pause(); else if(Snd.on && Music.want){ const pr = a.play(); if(pr) pr.catch(() => {}); }
+});
+
+/* Choix de la musique d'un soir :
+   colonne « musique » du Sheet = un nom de fichier (ex. Desire) ou une ambiance (douce / intense) ;
+   sinon l'ambiance du geste. Elles tournent d'un soir à l'autre. */
+const low = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const slugJS = s => low(s).replace(/\.[a-z0-9]{2,4}$/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const INTENSES = ['sceau', 'moto', 'chat'];
+function chooseTrack(p, g){
+  if(!MUSIQUES.length) return null;
+  let mood = null; const v = (p.musique || '').trim();
+  if(v){
+    const k = low(v);
+    if(/^(douce?|calme|tendre)$/.test(k)) mood = 'douce';
+    else if(/^(intense|forte?|sombre)$/.test(k)) mood = 'intense';
+    else { const s = slugJS(v), t = MUSIQUES.find(m => s && (m.fichier.includes(s) || slugJS(m.titre).includes(s))); if(t) return t; }
+  }
+  mood = mood || (p.kind !== 'fin' && INTENSES.includes(g) ? 'intense' : 'douce');
+  const pool = MUSIQUES.filter(m => m.ambiance === mood);
+  const L = pool.length ? pool : MUSIQUES;
+  return L[(p.n - 1) % L.length];
+}
+
+const bSon = $('#bSon');
+bSon.addEventListener('click', () => {
+  if(!Snd.on){ Snd.on = true; if(Snd.init()) try{ Snd.ctx.resume(); }catch(e){} Music.play(curTrack, curMode); Music.unlock();
+    document.querySelectorAll('.invite-son').forEach(b => b.remove()); }
+  else { Snd.on = false; Snd.stopIdle(); Music.stop(); setTimeout(() => { if(!Snd.on) try{ Snd.ctx.suspend(); }catch(e){} }, 1300); }
+  bSon.setAttribute('aria-pressed', String(Snd.on));
+  bSon.setAttribute('aria-label', Snd.on ? 'Couper le son et la musique' : 'Activer le son et la musique');
+  bSon.querySelector('.w1').style.display = Snd.on ? '' : 'none';
+  bSon.querySelector('.x1').style.display = Snd.on ? 'none' : '';
+});
+bSon.querySelector('.w1').style.display = 'none';
+
+/* =========================================================
+   MODE TEST (invisible sans ?test=1)
+   ?test=1                 affiche la page du jour sans attendre 21 h
+   &date=2026-11-20        fait comme si on était ce jour-là
+   &heure=20:59            fait comme s'il était cette heure-là (le verrou s'applique alors)
+   &rencontre=2026-11-22   remplace DATE_RENCONTRE
+   &geste=1 à 7            force un geste
+   &csv=adresse            lit un autre fichier CSV
+   ========================================================= */
+const T = { test: Q.get('test') === '1' };
+if(T.test){
+  T.csv = Q.get('csv') || '';
+  T.date = parseDate(Q.get('date'));
+  const h = (Q.get('heure') || '').match(/^(\d{1,2})(?:[:h](\d{2}))?$/);
+  if(h){ T.h = +h[1]; T.mi = +(h[2] || 0); }
+  T.rencontre = parseDate(Q.get('rencontre'));
+  T.geste = +Q.get('geste') || 0;
+}
+let OFFSET = 0;
+if(T.date || T.h != null){
+  const n = new Date(), t = new Date(n);
+  if(T.date){ const [y, m, d] = T.date.split('-').map(Number); t.setFullYear(y, m - 1, d); }
+  if(T.h != null) t.setHours(T.h, T.mi, 0, 0);
+  OFFSET = t - n;
+}
+const clock = () => new Date(Date.now() + OFFSET);
+const unlocked = () => (T.test && T.h == null) || clock().getHours() >= HEURE_DEBLOCAGE;
+const RENCONTRE = T.rencontre || parseDate(DATE_RENCONTRE);
+if(T.test){ window.__grimoire = {Music, Snd}; const b = $('#testb'); b.hidden = false; const up = () => { const c = clock(); b.textContent = 'TEST · ' + iso(c) + ' ' + pad(c.getHours()) + ':' + pad(c.getMinutes()); }; up(); setInterval(up, 10000); }
+
+/* =========================================================
+   MÉMOIRE DU TÉLÉPHONE (pages lues + dernière copie du grimoire)
+   ========================================================= */
+const KEY = T.test ? 'grimoire.test.v1' : 'grimoire.v1';
+let S = {};
+try{ S = JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ S = {}; }
+if(!Array.isArray(S.lus)) S.lus = [];
+if(!Array.isArray(S.rows)) S.rows = [];
+function saveS(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+const isRead = d => S.lus.includes(d);
+function markRead(d){ if(!isRead(d)){ S.lus.push(d); saveS(); } }
+
+/* =========================================================
+   LECTURE DU CSV PUBLIÉ
+   ========================================================= */
+function parseCSV(t){
+  t = t.replace(/^﻿/, '');
+  const rows = []; let row = [], f = '', q = false;
+  for(let i = 0; i < t.length; i++){
+    const c = t[i];
+    if(q){ if(c === '"'){ if(t[i + 1] === '"'){ f += '"'; i++; } else q = false; } else f += c; }
+    else if(c === '"') q = true;
+    else if(c === ','){ row.push(f); f = ''; }
+    else if(c === '\n' || c === '\r'){ if(c === '\r' && t[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if(f !== '' || row.length){ row.push(f); rows.push(row); }
+  return rows;
+}
+const norm = h => String(h).toLowerCase().replace(/œ/g, 'oe').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
+function toRows(text){
+  const all = parseCSV(text).filter(r => r.some(x => x.trim() !== ''));
+  if(!all.length) return [];
+  let col = {date:0, citation:1, auteur:2, oeuvre:3, motdedieu:4, valide:-1};
+  const head = all[0].map(norm);
+  if(head.includes('date') && head.includes('citation')){
+    col = {}; ['date', 'citation', 'auteur', 'oeuvre', 'motdedieu', 'valide', 'musique', 'question', 'curseur', 'reponsededieu', 'reponsedieu'].forEach(k => { col[k] = head.indexOf(k); });
+    all.shift();
+  }
+  const get = (r, k) => col[k] >= 0 && r[col[k]] != null ? String(r[col[k]]).trim() : '';
+  const out = [];
+  all.forEach(r => {
+    const date = parseDate(get(r, 'date')), citation = get(r, 'citation');
+    if(!date || !citation || /^#(N\/A|REF|VALUE|ERROR)/i.test(citation)) return;
+    if(col.valide >= 0 && !/^(true|vrai|oui|1|x)$/i.test(get(r, 'valide'))) return;   // sécurité : jamais une ligne non cochée
+    out.push({date, citation, auteur:get(r, 'auteur'), oeuvre:get(r, 'oeuvre'), mot:get(r, 'motdedieu'), musique:get(r, 'musique'),
+      question:get(r, 'question'), curseur:get(r, 'curseur'), reponse:get(r, 'reponsedieu') || get(r, 'reponsededieu')});
+  });
+  return out;
+}
+async function fetchRows(){
+  const url = T.csv || URL_FLUX_CSV;
+  if(!url) throw new Error('pas de lien');
+  const u = url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+  const ctrl = window.AbortController ? new AbortController() : null;
+  const to = setTimeout(() => ctrl && ctrl.abort(), 9000);
+  try{
+    const r = await fetch(u, {cache:'no-store', credentials:'omit', referrerPolicy:'no-referrer', signal:ctrl ? ctrl.signal : undefined});
+    if(!r.ok) throw new Error('http');
+    const t = await r.text();
+    if(/^\s*</.test(t)) throw new Error('html');   // page d'erreur Google
+    return toRows(t);
+  } finally { clearTimeout(to); }
+}
+
+/* =========================================================
+   LES PAGES
+   ========================================================= */
+let ST = {list:[], ok:false, key:''};
+function build(rows, ok){
+  const today = iso(clock()), un = unlocked();
+  const eve = RENCONTRE ? addDays(RENCONTRE, -1) : null;
+  const seen = new Set(); let list = [];
+  rows.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).forEach(r => {
+    if(r.date > today || seen.has(r.date)) return;   // jamais une page future
+    seen.add(r.date); list.push(Object.assign({kind:'cit'}, r));
+  });
+  if(APRES_RENCONTRE_ACTIF && RENCONTRE) APRES_RENCONTRE.forEach((r, i) => {
+    const d = addDays(RENCONTRE, i + 1);
+    if(d <= today && !seen.has(d)){ seen.add(d); list.push(Object.assign({kind:'cit', date:d}, r)); }
+  });
+  if(eve && eve <= today){
+    const er = list.find(x => x.date === eve);
+    list = list.filter(x => x.date !== eve);
+    list.push({kind:'fin', date:eve, texte:(TEXTE_FINAL || '').trim() || (er ? er.citation : '')});
+  }
+  list.sort((a, b) => a.date < b.date ? -1 : 1);
+  list.forEach((p, i) => { p.n = i + 1; });
+  const vis = list.filter(p => p.date < today || (p.date === today && un));
+  if(ok){ S.rows = rows.filter(r => r.date < today || (r.date === today && un)); saveS(); }
+  ST = {list:vis, ok, today, un, key:today + '|' + un};
+  $('#bSom').hidden = !vis.length;
+  const jx = $('#jx');
+  if(RENCONTRE){ const x = daysBetween(today, RENCONTRE); jx.hidden = x < 1; jx.textContent = 'J-' + x + ' avant la visite divine'; }
+  else jx.hidden = true;
+}
+
+let booting = null;
+function boot(){
+  if(booting) return booting;
+  booting = (async () => {
+    let rows, ok = true;
+    try{ rows = await fetchRows(); }catch(e){ ok = false; rows = S.rows || []; }
+    build(rows, ok);
+    route();
+  })().finally(() => { booting = null; });
+  return booting;
+}
+
+/* Minuteurs de l'écran en cours */
+let timers = [], intervals = [];
+function later(fn, ms){ const id = setTimeout(fn, ms); timers.push(id); return id; }
+function every(fn, ms){ const id = setInterval(fn, ms); intervals.push(id); return id; }
+function screen(){
+  timers.forEach(clearTimeout); intervals.forEach(clearInterval); timers = []; intervals = [];
+  Snd.stopIdle(); view.innerHTML = ''; window.scrollTo(0, 0);
+}
+
+function route(){
+  const h = location.hash;
+  if(h === '#sommaire' && ST.list.length) return showSommaire();
+  const m = h.match(/^#page-(\d+)$/);
+  if(m){ const p = ST.list.find(x => x.n === +m[1]); if(p) return showPage(p, {from:'som'}); }
+  tonight();
+}
+window.addEventListener('hashchange', route);
+$('#bHome').addEventListener('click', () => { if(location.hash) location.hash = ''; else route(); });
+$('#bSom').addEventListener('click', () => { location.hash = 'sommaire'; });
+
+function tonight(){
+  if(!ST.un) return showSleep();
+  const p = ST.list.find(x => x.date === ST.today);
+  if(p) return showPage(p, {});
+  if(!ST.ok && ST.list.length){
+    const read = ST.list.filter(x => isRead(x.date));
+    return showPage(read[read.length - 1] || ST.list[ST.list.length - 1], {note:'La page de ce soir arrive bientôt.'});
+  }
+  showInk();
+}
+
+/* ---------- Dessins ---------- */
+const CAT_SLEEP = '<svg class="art" viewBox="0 0 160 124" aria-hidden="true">'
+  + '<rect x="18" y="84" width="124" height="26" rx="3" fill="#3d0d19" stroke="#c9a96e" stroke-width=".8"/><path d="M24 92h112M24 100h112" stroke="rgba(201,169,110,.35)"/>'
+  + '<g transform="translate(48 22)"><path d="M44 57c9 0 14-5 13-12-1-5-6-6-7-2" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round"/>'
+  + '<path d="M19 62c-3-11 0-22 9-26h8c9 4 12 15 9 26z" fill="#141414"/><path d="M22 13l2 10h16l2-10-7 5h-6z" fill="#141414"/><circle cx="32" cy="25" r="10" fill="#141414"/>'
+  + '<path d="M26 26q2 1.6 4 0M34 26q2 1.6 4 0" stroke="#d8cc5c" stroke-width="1" fill="none" stroke-linecap="round"/></g>'
+  + '<g class="zz" fill="#c9a96e" font-family="Cormorant Garamond,serif" font-style="italic"><text x="98" y="30" font-size="14">z</text><text x="108" y="18" font-size="10">z</text></g></svg>';
+const INK = '<svg class="art" viewBox="0 0 160 124" aria-hidden="true">'
+  + '<path d="M54 112h52l-6-34H60z" fill="#141414" stroke="#c9a96e" stroke-width=".8"/><rect x="66" y="66" width="28" height="12" rx="2" fill="#141414" stroke="#c9a96e" stroke-width=".8"/>'
+  + '<path d="M82 70C96 40 120 16 146 6c-14 22-34 44-58 66z" fill="#e9e0cf" opacity=".85"/><path d="M82 70L140 12" stroke="#8a7a62" stroke-width="1"/>'
+  + '<circle cx="70" cy="118" r="2.4" fill="#8b0000"/></svg>';
+const RING = '<svg class="ring" viewBox="0 0 140 140" aria-hidden="true"><circle class="rbg" cx="70" cy="70" r="64"/><circle class="rfg" cx="70" cy="70" r="64" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/></svg>';
+const MOTO = '<svg class="moto" viewBox="0 0 360 100" aria-hidden="true"><defs><linearGradient id="bm" gradientUnits="userSpaceOnUse" x1="146" y1="0" x2="360" y2="0">'
+  + '<stop offset="0" stop-color="#fff3d0" stop-opacity=".85"/><stop offset="1" stop-color="#fff3d0" stop-opacity="0"/></linearGradient></defs>'
+  + '<polygon class="beam" points="146,37 362,-14 362,104 146,44" fill="url(#bm)"/>'
+  + '<g stroke-linecap="round" stroke-linejoin="round">'
+  + '<path d="M50 62H96" stroke="#3a3a3a" stroke-width="4"/>'
+  + '<path d="M45 72L80 48H118L145 72" fill="none" stroke="#050505" stroke-width="6"/><path d="M45 72L80 48H118L145 72" fill="none" stroke="rgba(242,235,224,.3)" stroke-width="1"/>'
+  + '<path d="M134 32L145 72" stroke="#2a2a2a" stroke-width="4"/><path d="M124 27l15 3" stroke="#2a2a2a" stroke-width="3"/>'
+  + '<path d="M78 48C84 30 110 28 122 40l-6 8z" fill="#8b0000" stroke="rgba(242,235,224,.3)"/>'
+  + '<path d="M56 46c4-8 20-8 24-2l-2 4-20 2z" fill="#111" stroke="rgba(242,235,224,.25)"/>'
+  + '<circle cx="45" cy="72" r="21" fill="none" stroke="#050505" stroke-width="8"/><circle cx="45" cy="72" r="21" fill="none" stroke="rgba(242,235,224,.32)" stroke-width="1"/>'
+  + '<circle cx="145" cy="72" r="21" fill="none" stroke="#050505" stroke-width="8"/><circle cx="145" cy="72" r="21" fill="none" stroke="rgba(242,235,224,.32)" stroke-width="1"/>'
+  + '<circle cx="45" cy="72" r="3" fill="#555"/><circle cx="145" cy="72" r="3" fill="#555"/>'
+  + '<circle class="hl" cx="143" cy="40" r="5" stroke="rgba(242,235,224,.4)"/></g></svg>';
+const CAT_SIDE = '<svg viewBox="0 0 120 72" aria-hidden="true"><g fill="#141414" stroke="#141414" stroke-linecap="round">'
+  + '<path class="tl" d="M32 38C16 36 9 22 17 8" fill="none" stroke-width="6"/>'
+  + '<path class="lg" d="M40 44v22" stroke-width="6"/><path class="lg b" d="M50 44v22" stroke-width="6"/><path class="lg b" d="M78 44v22" stroke-width="6"/><path class="lg" d="M88 44v22" stroke-width="6"/>'
+  + '<ellipse cx="62" cy="40" rx="32" ry="14" stroke="none"/><circle cx="96" cy="28" r="12" stroke="none"/><path d="M87 21l2-13 7 9zM98 17l6-9 1 13z" stroke="none"/></g>'
+  + '<ellipse cx="101" cy="27" rx="2" ry="2.6" fill="#d8cc5c"/><ellipse cx="101.4" cy="27" rx=".7" ry="2" fill="#0a0a0a"/></svg>';
+const CANDLE = '<svg viewBox="0 0 110 226" aria-hidden="true"><defs>'
+  + '<linearGradient id="cw" x1="0" x2="1"><stop offset="0" stop-color="#cfc3aa"/><stop offset=".45" stop-color="#f4ecdc"/><stop offset="1" stop-color="#b9ad95"/></linearGradient>'
+  + '<radialGradient id="cf" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#fffbe8"/><stop offset=".45" stop-color="#ffc35a"/><stop offset="1" stop-color="#e8536a" stop-opacity="0"/></radialGradient></defs>'
+  + '<g class="flame"><path d="M55 8C67 28 69 42 55 60 41 42 43 28 55 8z" fill="url(#cf)"/><path d="M55 34c5 8 5 14 0 22-5-8-5-14 0-22z" fill="#fff"/></g>'
+  + '<path d="M55 60v14" stroke="#222" stroke-width="2.5" stroke-linecap="round"/>'
+  + '<rect x="35" y="72" width="40" height="132" rx="4" fill="url(#cw)"/><path d="M35 80c6 0 6 16 10 16s3-16 8-16" fill="#e9dfcc"/>'
+  + '<ellipse cx="55" cy="208" rx="48" ry="10" fill="#3a2616"/><ellipse cx="55" cy="205" rx="40" ry="6" fill="#4d3420"/></svg>';
+const QUILL = '<svg viewBox="0 0 260 160" aria-hidden="true"><path class="ink" d="M14 128c20-16 30 10 48-4s28 12 48-2 30 10 50-4 26 8 44-2" fill="none" stroke="#c9a96e" stroke-width="1.6" stroke-linecap="round"/>'
+  + '<g class="q"><path d="M16 126C40 70 82 30 140 8c-18 36-56 82-118 120z" fill="#e9e0cf"/><path d="M16 126L132 14" stroke="#8a7a62" stroke-width="1.2"/><path d="M14 130l6-8" stroke="#2a1c12" stroke-width="2.4" stroke-linecap="round"/></g></svg>';
+const ROSE_P = {
+  bloomFill: "M58 80c8-18 26-22 34-11 6-14 24-16 32-4 8-6 20 2 18 15c6 30-12 58-42 60-30-2-48-30-42-60Z",
+  leaves: ["M100 196c-18-12-38-9-50 4 18 8 36 7 50-4z", "M101 232c17-14 37-13 48-1-16 9-34 9-48 1z"],
+  bloom: ["M101 74C92 70 86 80 92 87c6 7 18 3 18-6 0-10-14-15-24-8", "M58 80c8-18 26-22 34-11 6-14 24-16 32-4 8-6 20 2 18 15",
+          "M58 80c12 16 28 23 44 20 16-3 30-10 40-20", "M58 80c-6 30 12 58 42 60 30-2 48-30 42-60", "M64 100c8 14 20 24 34 28M136 100c-8 14-20 24-34 28"],
+  stem: ["M86 136c-4 9-12 13-22 13M114 136c4 9 12 13 22 13", "M101 140c-3 40 5 84-2 150", "M100 196c-18-12-38-9-50 4 18 8 36 7 50-4z",
+         "M101 232c17-14 37-13 48-1-16 9-34 9-48 1z", "M101 170l-9-5M100 258l9-5"]
+};
+const tags = (arr, extra) => arr.map(d => '<path d="' + d + '"' + (extra || '') + '/>').join('');
+const BIGROSE = '<svg class="bigrose" viewBox="0 0 200 300" role="img" aria-label="Une rose rouge se dessine">'
+  + '<defs><radialGradient id="rg" cx="50%" cy="40%" r="62%"><stop offset="0" stop-color="#e0294a"/><stop offset=".7" stop-color="#8b0016"/><stop offset="1" stop-color="#4a000a"/></radialGradient></defs>'
+  + '<g class="rose-fill"><path d="' + ROSE_P.bloomFill + '" fill="url(#rg)"/>' + tags(ROSE_P.leaves, ' fill="#3f5236"') + '</g>'
+  + '<g class="rs petals" stroke="#d0213f" stroke-width="2.4">' + tags(ROSE_P.bloom) + '</g>'
+  + '<g class="rs" stroke="#7f9471" stroke-width="2.2">' + tags(ROSE_P.stem) + '</g></svg>';
+
+/* ---------- Écrans d'attente ---------- */
+function showSleep(){
+  screen(); music(nuitTrack(), 'nuit');
+  const d = el('section', 'screen');
+  d.innerHTML = CAT_SLEEP + '<h1 class="msg">Le grimoire dort encore. Reviens à la tombée de la nuit, princesse.</h1>'
+    + '<p class="cd" role="timer" aria-live="off">Il s\'éveille dans <b aria-hidden="true"></b><span class="sr-only">quelques heures, à ' + HEURE_DEBLOCAGE + ' heures.</span></p>';
+  if(ST.list.length){ const b = el('button', 'lbtn', 'Feuilleter les pages passées'); b.type = 'button'; b.onclick = () => { location.hash = 'sommaire'; }; d.append(b); }
+  inviteSon(d);
+  view.append(d);
+  const out = d.querySelector('.cd b');
+  const tick = () => {
+    const c = clock(), t = new Date(c); t.setHours(HEURE_DEBLOCAGE, 0, 0, 0);
+    let s = Math.ceil((t - c) / 1000);
+    if(s <= 0){ out.textContent = '0 s'; intervals.forEach(clearInterval); boot(); return; }
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); s = s % 60;
+    out.textContent = (h ? h + ' h ' + pad(m) + ' min ' : (m ? m + ' min ' : '')) + pad(s) + ' s';
+  };
+  tick(); every(tick, 1000);
+}
+function showInk(){
+  screen(); music(nuitTrack(), 'nuit');
+  const d = el('section', 'screen');
+  d.innerHTML = INK + '<h1 class="msg">L\'encre n\'a pas encore séché. Reviens un peu plus tard.</h1>';
+  if(ST.list.length){ const b = el('button', 'lbtn', 'Feuilleter les pages passées'); b.type = 'button'; b.onclick = () => { location.hash = 'sommaire'; }; d.append(b); }
+  inviteSon(d);
+  view.append(d);
+  later(boot, 120000);   // on réessaie toutes les 2 minutes
+}
+
+/* ---------- Le sommaire ---------- */
+function showSommaire(){
+  screen(); music(nuitTrack(), 'nuit');
+  const d = el('section', 'som');
+  const lues = ST.list.filter(p => isRead(p.date)).length;
+  d.innerHTML = '<h1>Sommaire</h1><p class="sub">' + ST.list.length + (ST.list.length > 1 ? ' pages' : ' page') + ' · ' + lues + (lues > 1 ? ' scellées' : ' scellée') + '</p>';
+  const ol = el('ol', 'tiles');
+  ST.list.forEach(p => {
+    const li = el('li'), b = el('button', 'tile' + (p.kind === 'fin' ? ' fin' : '')); b.type = 'button';
+    const read = isRead(p.date);
+    b.innerHTML = '<b aria-hidden="true">' + roman(p.n) + '</b><small aria-hidden="true">' + esc(fmtDay(p.date)) + '</small>' + (read ? '<span class="cachet" aria-hidden="true"></span>' : '');
+    b.setAttribute('aria-label', (p.kind === 'fin' ? 'Dernière page, ' : 'Page ' + p.n + ', ') + fmtLong(p.date) + (read ? ', lue' : ', pas encore lue'));
+    b.onclick = () => { location.hash = 'page-' + p.n; };
+    li.append(b); ol.append(li);
+  });
+  d.append(ol);
+  const back = el('button', 'lbtn', 'Revenir à ce soir'); back.type = 'button'; back.onclick = () => { location.hash = ''; };
+  d.append(back);
+  view.append(d);
+  focusSoft(d.querySelector('h1'));
+}
+
+/* ---------- Une page ---------- */
+const GESTES = ['rose', 'sceau', 'moto', 'vitre', 'chat', 'bougie', 'plume'];
+function citText(s){
+  s = String(s).replace(/\s+\/\s+/g, '\n').trim();
+  return /^[«"“]/.test(s) ? s : '« ' + s + ' »';
+}
+function showPage(p, opt){
+  opt = opt || {};
+  screen();
+  const art = el('article', 'page');
+  const label = p.kind === 'fin' ? 'Dernière page' : 'Page';
+  art.innerHTML = '<h1 class="num" tabindex="-1" aria-label="' + label + ' ' + p.n + '"><span>' + label + '</span><b>' + roman(p.n) + '</b></h1>'
+    + (p.reponse ? '<aside class="lu" aria-label="Dieu t\'a lue"><p class="who">Dieu t\'a lue</p><p>' + esc(p.reponse) + '</p></aside>' : '')
+    + '<div class="stage"></div><p class="hint" aria-live="polite"></p><button class="alt" type="button"></button>'
+    + (opt.note ? '<p class="note">' + esc(opt.note) + '</p>' : '')
+    + '<section class="reading" hidden tabindex="-1"></section><section class="toi" aria-labelledby="toi-t" hidden></section><nav class="after" aria-label="Pages" hidden></nav>';
+  const stage = art.querySelector('.stage'), hint = art.querySelector('.hint'), alt = art.querySelector('.alt'),
+        reading = art.querySelector('.reading'), after = art.querySelector('.after');
+  const full = p.kind === 'fin' ? '' : citText(p.citation);
+  if(p.kind === 'fin'){
+    reading.innerHTML = '<div class="mot final">' + (p.texte ? '<p>' + esc(p.texte) + '</p>' : '') + '<p class="sig">Dieu</p></div>'
+      + '<p class="last">Demain, le conte cesse d\'être un conte.</p>';
+  } else {
+    const src = p.auteur ? '<p class="src">— ' + esc(p.auteur) + (p.oeuvre ? ', <i>' + esc(p.oeuvre) + '</i>' : '') + '</p>' : '';
+    const mot = p.mot ? '<div class="mot"><p>' + esc(p.mot) + '</p><p class="sig">Dieu</p></div>' : '';
+    reading.innerHTML = '<blockquote class="cit">' + esc(full) + '</blockquote>' + src + mot;
+  }
+  reading.setAttribute('aria-label', label + ' ' + p.n);
+
+  // Navigation sous la page
+  const idx = ST.list.indexOf(p), prev = ST.list[idx - 1], next = ST.list[idx + 1];
+  const nb = (txt, aria, fn) => { const b = el('button', 'lbtn', txt); b.type = 'button'; if(aria) b.setAttribute('aria-label', aria); b.onclick = fn; after.append(b); };
+  if(prev) nb('‹ ' + roman(prev.n), 'Page précédente, ' + prev.n, () => { location.hash = 'page-' + prev.n; });
+  nb('Feuilleter le grimoire', null, () => { location.hash = 'sommaire'; });
+  if(next) nb(roman(next.n) + ' ›', 'Page suivante, ' + next.n, () => { location.hash = 'page-' + next.n; });
+
+  let revealed = false;
+  const c = {page:p, stage, reading, hint, alt, full, later, onAlt:null,
+    say(t){ hint.textContent = t; },
+    reveal(){
+      if(revealed) return; revealed = true;
+      c.onAlt = null; alt.hidden = true; hint.textContent = '';
+      reading.hidden = false; reading.removeAttribute('aria-hidden'); reading.classList.remove('typing');
+      if(RM) reading.classList.add('show'); else requestAnimationFrame(() => reading.classList.add('show'));
+      markRead(p.date); buzz(18); after.hidden = false;
+      curMode = 'plein'; Music.swell();
+      later(() => buildToi(p, art.querySelector('.toi')), RM ? 0 : 1800);
+      later(() => { reading.scrollIntoView({behavior:RM ? 'auto' : 'smooth', block:'start'}); focusSoft(reading); }, RM ? 0 : 380);
+    }
+  };
+  alt.onclick = () => { if(c.onAlt) c.onAlt(); };
+  view.append(art);
+
+  const g = p.kind === 'fin' ? 'fin' : (T.geste ? GESTES[(T.geste - 1) % 7] : GESTES[(p.n - 1) % 7]);
+  const track = chooseTrack(p, g);
+  // iPhone : si la musique n'a pas pu démarrer seule, le premier toucher la relance
+  art.addEventListener('pointerdown', () => {
+    if(!Snd.on || !Music.want || !Music.els.length) return;
+    const a = Music.els[Music.idx]; if(a.paused){ const pr = a.play(); if(pr) pr.catch(() => {}); }
+  }, {once:true});
+
+  if(isRead(p.date) && !opt.replay){
+    music(track, 'plein');
+    // Page déjà lue : on l'affiche directement
+    stage.hidden = true; alt.hidden = true; hint.hidden = true;
+    reading.hidden = false; reading.classList.add('show', 'nofade'); after.hidden = false;
+    buildToi(p, art.querySelector('.toi'));
+    const r = el('button', 'lbtn', 'Rejouer le geste'); r.type = 'button'; r.onclick = () => showPage(p, Object.assign({}, opt, {replay:true}));
+    after.append(r);
+    if(opt.from === 'som') focusSoft(art.querySelector('h1'));
+    return;
+  }
+  music(track, 'amb');
+  stage.classList.add(g + '-s');
+  c.say(G[g].hint); alt.textContent = G[g].alt;
+  G[g].mount(c);
+}
+
+/* =========================================================
+   « ET TOI, CE SOIR ? » — tout est facultatif, rien ne part sans son geste.
+   Ses réponses restent gardées sur son téléphone. Elle choisit de les envoyer ou non.
+   ========================================================= */
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function parseCurseur(s){
+  const d = CURSEUR_DEFAUT.split('|').map(x => x.trim());
+  const p = String(s || '').split('|').map(x => x.trim()).filter(Boolean);
+  if(p.length >= 3) return p.slice(0, 3);
+  if(p.length === 2) return [d[0], p[0], p[1]];
+  if(p.length === 1) return [p[0], d[1], d[2]];
+  return d;
+}
+function buildToi(p, box){
+  if(!box || !box.hidden) return;
+  if(!S.rep || typeof S.rep !== 'object') S.rep = {};
+  const R = S.rep[p.date] = S.rep[p.date] || {};
+  const [cl, cg, cd] = parseCurseur(p.curseur);
+  const ce = p.date === ST.today ? 'ce soir' : 'ce soir-là';
+  box.innerHTML = '<h2 id="toi-t">Et toi, ' + ce + ' ?</h2><p class="sub">Tout est facultatif. Tu peux passer ce que tu veux.</p>'
+    + '<fieldset><legend>Ton humeur</legend><div class="chips"></div></fieldset>'
+    + '<fieldset><legend id="cl-' + p.n + '">' + esc(cl) + '</legend><div class="range vide"><span aria-hidden="true">' + esc(cg) + '</span>'
+    + '<input type="range" min="0" max="10" step="1" value="5" aria-labelledby="cl-' + p.n + '"><span aria-hidden="true">' + esc(cd) + '</span></div><p class="rv"></p></fieldset>'
+    + (p.question ? '<fieldset><label class="q" for="q-' + p.n + '">' + esc(p.question) + '</label><textarea id="q-' + p.n + '" class="ta-q" placeholder="Si tu en as envie…"></textarea></fieldset>' : '')
+    + '<fieldset><label class="q" for="m-' + p.n + '">Un mot pour Dieu</label><textarea id="m-' + p.n + '" class="ta-m" placeholder="Ce que tu veux, ou rien du tout."></textarea></fieldset>'
+    + '<p class="sur premier" hidden></p><div class="envoi"></div><p class="sur"></p><p class="merci" aria-live="polite"></p>';
+  let tSave = 0; const save = () => { clearTimeout(tSave); tSave = setTimeout(saveS, 300); upd(); };
+
+  // Humeur
+  const chips = box.querySelector('.chips');
+  HUMEURS.forEach(h => {
+    const b = el('button', 'chip', h); b.type = 'button'; b.setAttribute('aria-pressed', String(R.humeur === h));
+    b.onclick = () => { R.humeur = R.humeur === h ? null : h; chips.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x.textContent === R.humeur))); buzz(6); save(); };
+    chips.append(b);
+  });
+  // Curseur (non compté tant qu'elle n'y touche pas)
+  const rg = box.querySelector('.range'), inp = rg.querySelector('input'), rv = box.querySelector('.rv');
+  const showR = () => {
+    rv.textContent = '';
+    if(R.curseur == null){ rg.classList.add('vide'); inp.value = 5; inp.setAttribute('aria-valuetext', 'pas de réponse'); return; }
+    rg.classList.remove('vide'); inp.value = R.curseur;
+    const v = R.curseur, mot = v <= 3 ? cg : v >= 7 ? cd : 'entre les deux';
+    inp.setAttribute('aria-valuetext', v + ' sur 10, ' + mot);
+    rv.append(document.createTextNode(v + '/10 · ' + mot + ' · '));
+    const x = el('button', 'chip', 'effacer'); x.type = 'button'; x.style.minHeight = '32px'; x.setAttribute('aria-label', 'Effacer ma réponse au curseur');
+    x.onclick = () => { R.curseur = null; showR(); save(); }; rv.append(x);
+  };
+  inp.addEventListener('input', () => { R.curseur = +inp.value; showR(); save(); });
+  showR();
+  // Textes
+  const tq = box.querySelector('.ta-q'), tm = box.querySelector('.ta-m');
+  if(tq){ tq.value = R.question || ''; tq.addEventListener('input', () => { R.question = tq.value; save(); }); }
+  tm.value = R.mot || ''; tm.addEventListener('input', () => { R.mot = tm.value; save(); });
+
+  // Le message, tel qu'il partira si elle le décide
+  const compose = () => {
+    const L = [];
+    if(R.humeur) L.push('Mon humeur : ' + R.humeur.toLowerCase());
+    // « Ce soir, ton cœur est… » devient « Ce soir, mon cœur est » dans son message
+    const moi = s => s.replace(/\b(ton|ta|tes|tu|te|toi)\b/gi, w => ({ton:'mon', ta:'ma', tes:'mes', tu:'je', te:'me', toi:'moi'})[w.toLowerCase()]);
+    if(R.curseur != null) L.push(moi(cl.replace(/[….\s]+$/, '')) + ' : ' + R.curseur + '/10 (' + cg + ' → ' + cd + ')');
+    if(p.question && R.question && R.question.trim()) L.push('« ' + p.question + ' »\n' + R.question.trim());
+    if(R.mot && R.mot.trim()) L.push(R.mot.trim());
+    return L.length ? 'Grimoire, page ' + roman(p.n) + ' (' + fmtDay(p.date) + ')\n\n' + L.join('\n\n') : '';
+  };
+  const merci = box.querySelector('.merci'), env = box.querySelector('.envoi'), sur = box.querySelector('.sur:not(.premier)'), prem = box.querySelector('.premier');
+  const sent = () => { S.contact = true; R.envoye = true; saveS(); merci.textContent = 'Tes mots sont prêts à partir. Ils restent aussi gardés ici, rien que pour toi.'; prem.hidden = true; };
+  const mk = (txt, cls, fn) => { const b = el('button', 'lbtn ' + (cls || ''), txt); b.type = 'button'; b.onclick = fn; env.append(b); return b; };
+  let num = ''; try{ num = atob(NUMERO_DIEU_MASQUE || '').split('').reverse().join('').replace(/\D/g, ''); }catch(e){}
+  const ig = String(INSTAGRAM_DIEU || '').replace(/^@/, '').trim();
+  const sendBtns = [];
+  if(ig || num){
+    if(ig) sendBtns.push(mk('Envoyer à Dieu sur Instagram', 'rouge', () => {
+      const t = compose(); if(!t) return;
+      // Instagram ne permet pas de pré-remplir un message : on copie ses mots, elle n'a plus qu'à coller
+      let copie = null; try{ copie = navigator.clipboard ? navigator.clipboard.writeText(t) : null; }catch(e){}
+      window.open('https://ig.me/m/' + encodeURIComponent(ig), '_blank', 'noopener');
+      sent();
+      merci.textContent = 'Tes mots sont copiés : dans la conversation, appuie longuement puis « Coller ». Ils restent aussi gardés ici.';
+      if(copie) copie.catch(() => { merci.textContent = 'La conversation s\'ouvre. Tes mots sont gardés ici, tu peux les recopier.'; });
+    }));
+    if(num) sendBtns.push(mk('Envoyer par SMS', ig ? '' : 'rouge', () => { const t = compose(); if(!t) return; location.href = 'sms:+' + num + (IOS ? '&' : '?') + 'body=' + encodeURIComponent(t); sent(); }));
+    sur.textContent = 'Rien ne part sans toi : le bouton ouvre ta conversation avec Dieu, tu peux relire, changer, ou ne pas envoyer.'
+      + (S.contact ? '' : (num ? ' Par SMS, Dieu découvrira ton numéro.' : ''));
+  } else {
+    sendBtns.push(mk('Envoyer à Dieu', 'rouge', async () => {
+      const t = compose(); if(!t) return;
+      try{ if(navigator.share){ await navigator.share({text:t}); sent(); return; } }catch(e){ return; }   // annulé : rien n'est parti
+      try{ await navigator.clipboard.writeText(t); merci.textContent = 'Tes mots sont copiés. Colle-les où tu veux, si tu veux.'; R.envoye = true; saveS(); }catch(e){}
+    }));
+    sur.textContent = 'Rien ne part sans toi : le bouton ouvre le partage de ton téléphone, c\'est toi qui choisis où, et si tu envoies.';
+  }
+  if(!S.contact){ prem.hidden = false; prem.textContent = 'Pour l\'instant, Dieu ne peut te parler qu\'ici. Si un soir tu veux qu\'il puisse te répondre ailleurs, envoie-lui tes mots.'; }
+  mk('Garder pour moi', '', () => { R.garde = true; saveS(); merci.textContent = 'C\'est gardé ici, rien que pour toi.'; });
+  const upd = () => { const vide = !compose(); sendBtns.forEach(b => { b.disabled = vide; }); };
+  upd();
+  if(R.envoye) merci.textContent = 'Tu as déjà confié ces mots à Dieu. Tu peux les changer et les renvoyer si tu veux.';
+  box.hidden = false;
+}
+
+/* Appui long : appelle done() après ms millisecondes de pression continue */
+function hold(target, ms, h){
+  let t0 = 0, raf = 0, done = false, active = false;
+  const step = () => {
+    const p = Math.min(1, (performance.now() - t0) / ms); h.progress(p);
+    if(p >= 1){ done = true; active = false; h.done(); return; }
+    raf = requestAnimationFrame(step);
+  };
+  target.addEventListener('pointerdown', e => {
+    if(done || (e.button != null && e.button > 0)) return;
+    e.preventDefault(); active = true; t0 = performance.now();
+    try{ target.setPointerCapture(e.pointerId); }catch(x){}
+    h.start(); raf = requestAnimationFrame(step);
+  });
+  const end = () => {
+    if(!active || done) return;
+    if(performance.now() - t0 >= ms){ api.finish(); return; }   // téléphone lent : le temps compte, pas les images
+    active = false; cancelAnimationFrame(raf); h.cancel();
+  };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => target.addEventListener(ev, end));
+  target.addEventListener('contextmenu', e => e.preventDefault());
+  // Clavier (Entrée / Espace) : vaut un appui long
+  target.addEventListener('click', e => { if(!done && e.detail === 0) api.finish(); });
+  const api = { finish(){ if(done) return; done = true; active = false; cancelAnimationFrame(raf); h.progress(1); h.done(); } };
+  return api;
+}
+function nudge(n){ n.classList.remove('nudge'); void n.offsetWidth; n.classList.add('nudge'); }
+
+/* =========================================================
+   LES 7 GESTES (+ la page finale)
+   ========================================================= */
+const G = {};
+
+G.rose = { hint:'Effeuille la rose, pétale après pétale.', alt:'Effeuiller d\'un seul geste',
+  mount(c){
+    const N = 6, w = el('div', 'rose-g'); w.innerHTML = '<span class="stem"></span><span class="leaf"></span>';
+    let left = N; const pets = [];
+    const pluck = b => {
+      if(b.disabled) return;
+      const hadFocus = document.activeElement === b;
+      b.disabled = true; b.style.setProperty('--fx', rnd(-90, 90).toFixed(0) + 'px'); b.classList.add('off');
+      left--; Snd.play('chime', {n:N - left}); buzz(10);
+      if(left > 0){ c.say(left === 1 ? 'Plus qu\'un pétale…' : 'Encore ' + left + ' pétales.'); if(hadFocus){ const n = pets.find(x => !x.disabled); focusSoft(n); } }
+      else c.later(() => c.reveal(), RM ? 0 : 500);
+    };
+    for(let i = 0; i < N; i++){
+      const b = el('button', 'pet'); b.type = 'button'; b.style.setProperty('--a', (i * 360 / N) + 'deg');
+      b.setAttribute('aria-label', 'Pétale ' + (i + 1) + ' sur ' + N); b.onclick = () => pluck(b);
+      pets.push(b); w.append(b);
+    }
+    w.append(el('span', 'bud')); c.stage.append(w);
+    c.onAlt = () => { pets.filter(b => !b.disabled).forEach((b, i) => { b.disabled = true; c.later(() => { b.style.setProperty('--fx', rnd(-90, 90).toFixed(0) + 'px'); b.classList.add('off'); }, RM ? 0 : i * 80); });
+      left = 0; Snd.play('chime', {n:3}); c.later(() => c.reveal(), RM ? 0 : 700); };
+  }
+};
+
+G.sceau = { hint:'Garde le doigt posé sur le sceau : la cire va fondre.', alt:'Briser le sceau d\'un toucher',
+  mount(c){
+    const w = el('div', 'env');
+    w.innerHTML = '<span class="flap"></span><button class="seal" type="button" aria-label="Sceau de cire rouge. Garde le doigt appuyé pour le faire fondre.">'
+      + RING + '<span class="wax"><span aria-hidden="true">D</span></span><i class="drip d1"></i><i class="drip d2"></i><i class="drip d3"></i></button>';
+    c.stage.append(w);
+    const seal = w.querySelector('.seal'), fg = w.querySelector('.rfg'); let lb = 0;
+    const H = hold(seal, 1300, {
+      start(){ c.say('Encore un peu…'); },
+      progress(p){ fg.style.transition = 'none'; fg.style.strokeDashoffset = 100 * (1 - p); seal.style.setProperty('--p', p);
+        const t = performance.now(); if(t - lb > 260 && p < 1){ buzz(8); lb = t; } },
+      cancel(){ fg.style.transition = 'stroke-dashoffset .35s'; fg.style.strokeDashoffset = 100; seal.style.setProperty('--p', 0);
+        c.say('Garde le doigt posé un peu plus longtemps.'); nudge(seal); },
+      done(){ seal.classList.add('melt'); w.classList.add('open'); Snd.play('crack'); buzz([30, 40, 60]); c.say('La cire fond…'); c.later(() => c.reveal(), RM ? 0 : 1300); }
+    });
+    c.onAlt = () => H.finish();
+  }
+};
+
+G.moto = { hint:'Garde le doigt sur le bouton rouge pour démarrer la moto.', alt:'Démarrer d\'un toucher',
+  mount(c){
+    c.stage.innerHTML = '<span class="road-l"></span>' + MOTO;
+    const b = el('button', 'ign'); b.type = 'button'; b.setAttribute('aria-label', 'Démarrer la moto : garde le doigt appuyé');
+    b.innerHTML = RING + '<span aria-hidden="true">Démarrer</span>'; c.stage.append(b);
+    const fg = b.querySelector('.rfg'); let lb = 0;
+    const H = hold(b, 1700, {
+      start(){ b.classList.add('press'); c.stage.classList.add('rev'); c.say('Le moteur gronde…'); },
+      progress(p){ fg.style.transition = 'none'; fg.style.strokeDashoffset = 100 * (1 - p); Snd.idle(p);
+        const t = performance.now(); if(t - lb > 140 && p < 1){ buzz(Math.round(10 + p * 25)); lb = t; } },
+      cancel(){ b.classList.remove('press'); c.stage.classList.remove('rev'); Snd.stopIdle(); fg.style.transition = 'stroke-dashoffset .35s'; fg.style.strokeDashoffset = 100;
+        c.say('Garde le doigt posé jusqu\'à ce que le phare s\'allume.'); },
+      done(){ b.classList.remove('press'); b.classList.add('go'); Snd.stopIdle(); Snd.play('rev'); c.stage.classList.remove('rev'); c.stage.classList.add('lit');
+        c.reading.dataset.light = 'beam'; buzz([60, 40, 140]); Music.swell(); c.say('Le phare s\'allume.'); c.later(() => c.reveal(), RM ? 0 : 800); }
+    });
+    c.onAlt = () => H.finish();
+  }
+};
+
+G.vitre = { hint:'La vitre est embuée. Frotte-la du bout du doigt pour lire.', alt:'Essuyer la vitre d\'un toucher',
+  mount(c){
+    c.stage.hidden = true;
+    const r = c.reading; r.hidden = false; r.classList.add('vitre', 'show', 'nofade'); r.setAttribute('aria-hidden', 'true');
+    const cv = el('canvas', 'fog'); cv.setAttribute('aria-hidden', 'true'); r.append(cv);
+    const ctx = cv.getContext('2d'), CELL = 26; let W = 0, H = 0, cells = new Set(), total = 1, started = false, done = false, down = false, last = null;
+    const paint = () => {
+      const b = r.getBoundingClientRect(); W = b.width; H = b.height; const dpr = Math.min(2, window.devicePixelRatio || 1);
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+      const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3b4146'); g.addColorStop(1, '#262b2f'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      for(let i = 0; i < W * H / 70; i++){ ctx.fillStyle = 'rgba(225,232,236,' + rnd(.03, .11).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(rnd(0, W), rnd(0, H), rnd(.5, 2.6), 0, 7); ctx.fill(); }
+      cells = new Set(); total = Math.max(1, Math.ceil(W / CELL) * Math.ceil(H / CELL));
+    };
+    const clear = () => { if(done) return; done = true; cv.classList.add('gone'); c.later(() => cv.remove(), 1000); Snd.play('chime', {n:4}); c.reveal(); };
+    const rub = (x, y) => {
+      ctx.globalCompositeOperation = 'destination-out';
+      const b = ctx.createRadialGradient(x, y, 0, x, y, 32); b.addColorStop(0, 'rgba(0,0,0,1)'); b.addColorStop(.6, 'rgba(0,0,0,.9)'); b.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = b; ctx.beginPath(); ctx.arc(x, y, 32, 0, 7); ctx.fill();
+      for(let dx = -20; dx <= 20; dx += 10) for(let dy = -20; dy <= 20; dy += 10){
+        const cx = Math.floor((x + dx) / CELL), cy = Math.floor((y + dy) / CELL);
+        if(cx >= 0 && cy >= 0 && cx * CELL < W && cy * CELL < H) cells.add(cx + ',' + cy);
+      }
+      if(cells.size / total > .5) clear();
+    };
+    const pt = e => { const b = cv.getBoundingClientRect(); return {x:e.clientX - b.left, y:e.clientY - b.top}; };
+    cv.addEventListener('pointerdown', e => { if(done) return; e.preventDefault(); down = true; started = true; last = pt(e); rub(last.x, last.y); try{ cv.setPointerCapture(e.pointerId); }catch(x){} });
+    cv.addEventListener('pointermove', e => {
+      if(!down || done) return; const p = pt(e), d = Math.hypot(p.x - last.x, p.y - last.y), n = Math.max(1, Math.ceil(d / 8));
+      for(let i = 1; i <= n && !done; i++) rub(last.x + (p.x - last.x) * i / n, last.y + (p.y - last.y) * i / n);
+      last = p; if(Math.random() < .06) buzz(4);
+    });
+    ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, () => { down = false; }));
+    paint();
+    if(window.ResizeObserver){ const ro = new ResizeObserver(() => { if(!started && !done) paint(); }); ro.observe(r); }
+    c.onAlt = clear;
+  }
+};
+
+G.chat = { hint:'Chut… le chat noir t\'apporte quelque chose.', alt:'Ouvrir la lettre',
+  mount(c){
+    const s = c.stage; s.innerHTML = '<span class="moon"></span>';
+    const lt = el('button', 'lettre'); lt.type = 'button'; lt.setAttribute('aria-label', 'Ouvrir la lettre');
+    lt.innerHTML = '<span class="papier"></span><span class="rabat"></span><span class="cachet"></span>';
+    const cat = el('div', 'wcat'); cat.innerHTML = CAT_SIDE; s.append(lt, cat);
+    let opened = false;
+    const open = () => { if(opened) return; opened = true; lt.classList.add('in', 'open'); Snd.play('paper'); buzz(14); c.say('La lettre s\'ouvre…'); c.later(() => c.reveal(), RM ? 0 : 1100); };
+    lt.onclick = open; c.onAlt = open;
+    const W = s.clientWidth;
+    if(RM){ cat.style.transform = 'translateX(' + Math.max(0, W / 2 - 190) + 'px)'; lt.classList.add('in'); c.say('Le chat noir a déposé une lettre. Touche-la pour l\'ouvrir.'); return; }
+    cat.style.transform = 'translateX(-130px)'; cat.classList.add('walking');
+    c.later(() => { cat.style.transition = 'transform 2.6s linear'; cat.style.transform = 'translateX(' + (W / 2 - 112) + 'px)'; }, 60);
+    c.later(() => { cat.classList.remove('walking'); lt.classList.add('in'); Snd.play('purr'); buzz(12); c.say('Il a déposé une lettre. Touche-la pour l\'ouvrir.'); }, 2700);
+    c.later(() => { cat.classList.add('walking'); cat.style.transition = 'transform 2.2s linear'; cat.style.transform = 'translateX(' + (W + 20) + 'px)'; }, 3600);
+  }
+};
+
+G.bougie = { hint:'Touche la bougie pour l\'allumer.', alt:'Allumer la bougie',
+  mount(c){
+    const b = el('button', 'candle'); b.type = 'button'; b.setAttribute('aria-label', 'Allumer la bougie'); b.innerHTML = CANDLE;
+    c.stage.append(el('span', 'halo'), b);
+    let lit = false;
+    const light = () => { if(lit) return; lit = true; c.stage.classList.add('lit'); b.setAttribute('aria-label', 'La bougie est allumée'); b.disabled = true;
+      c.reading.dataset.light = 'candle'; Snd.play('flame'); buzz(12); c.say('À la lueur de la bougie…'); c.later(() => c.reveal(), RM ? 0 : 1100); };
+    b.onclick = light; c.onAlt = light;
+  }
+};
+
+G.plume = { hint:'La plume écrit pour toi…', alt:'Tout afficher',
+  mount(c){
+    c.stage.innerHTML = QUILL;
+    const r = c.reading, cit = r.querySelector('.cit');
+    r.hidden = false; r.classList.add('typing', 'typed'); r.setAttribute('aria-hidden', 'true');
+    let i = 0, fin = false; const full = c.full, sp = clamp(7000 / full.length, 18, 55), nib = el('span', 'nib');
+    const finish = () => { if(fin) return; fin = true; cit.textContent = full; c.stage.classList.add('stop'); c.reveal(); };
+    if(RM){ finish(); return; }
+    cit.textContent = '';
+    const tick = () => { if(fin) return; i++; cit.textContent = full.slice(0, i); cit.append(nib); if(i % 5 === 0) Snd.play('scratch');
+      if(i < full.length) c.later(tick, sp); else c.later(finish, 400); };
+    c.later(tick, 500);
+    c.onAlt = finish;
+  }
+};
+
+G.fin = { hint:'Regarde…', alt:'Tout afficher',
+  mount(c){
+    c.stage.classList.add('tall'); c.stage.innerHTML = BIGROSE;
+    const svg = c.stage.firstChild, paths = Array.from(svg.querySelectorAll('.rs path'));
+    let fin = false;
+    const end = () => { if(fin) return; fin = true; paths.forEach(p => { p.style.strokeDashoffset = 0; }); svg.classList.add('lit'); Snd.play('bloom'); buzz([40, 60, 40]); Music.swell();
+      c.later(() => c.reveal(), RM ? 0 : 1400); };
+    c.onAlt = () => { paths.forEach(p => { p.style.transition = 'none'; }); end(); };
+    if(RM){ end(); return; }
+    paths.forEach(p => { const L = Math.ceil(p.getTotalLength()) + 2; p.style.strokeDasharray = L; p.style.strokeDashoffset = L; });
+    svg.getBoundingClientRect();
+    const total = 5200, step = total / paths.length;
+    paths.forEach((p, i) => { p.style.transition = 'stroke-dashoffset ' + (step * 1.7 / 1000).toFixed(2) + 's ease-in-out ' + (i * step / 1000).toFixed(2) + 's, stroke 1.6s'; });
+    requestAnimationFrame(() => paths.forEach(p => { p.style.strokeDashoffset = 0; }));
+    c.later(end, total + step * .7);
+  }
+};
+
+/* =========================================================
+   DÉMARRAGE
+   ========================================================= */
+if(!RM){
+  const pb = $('#petals');
+  for(let i = 0; i < 9; i++){
+    const p = el('span', 'petal'), s = rnd(9, 16);
+    p.style.cssText = '--x:' + rnd(0, 100).toFixed(1) + '%;--d:' + rnd(16, 30).toFixed(1) + 's;--dl:' + (-rnd(0, 30)).toFixed(1) + 's;';
+    const i2 = el('i'); i2.style.cssText = '--s:' + s.toFixed(1) + 'px;--sw:' + rnd(3, 6).toFixed(1) + 's;--o:' + rnd(.25, .5).toFixed(2) + ';';
+    p.append(i2); pb.append(p);
+  }
+}
+// Minuit ou 21 h passés pendant que la page est ouverte : on recharge le grimoire
+setInterval(() => { if(!document.hidden && ST.key && ST.key !== iso(clock()) + '|' + unlocked()) boot(); }, 15000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden && ST.key && ST.key !== iso(clock()) + '|' + unlocked()) boot(); });
+boot();
+})();
+</script>
+</body>
+</html>
