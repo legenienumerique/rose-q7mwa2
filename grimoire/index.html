@@ -16,7 +16,7 @@
 /* =========================================================
    RÉGLAGES — la seule partie à modifier
    ========================================================= */
-const URL_FLUX_CSV = "";        // lien CSV publié de l'onglet Flux (entre les guillemets)
+const URL_FLUX_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTo1z90uspv1yqy0Mezyx_eKRYRdi0VbIKU1Fl_0wvDp01DBm4rf5-LsOQIqEGsSDuINfC32F5lRNNO/pub?gid=524656322&single=true&output=csv";        // lien CSV publié de l'onglet Flux (entre les guillemets)
 const HEURE_DEBLOCAGE = 21;     // heure locale du téléphone
 const DATE_RENCONTRE = null;    // ex. "2026-12-05" (avec les guillemets) quand on aura fixé la date
 const INSTAGRAM_DIEU = "only.goldrider";    // ton nom d'utilisateur Instagram, sans @ (le bouton ouvre ta conversation)
@@ -163,6 +163,12 @@ button{font:inherit;color:inherit}
 .sur{margin:12px 0 0;text-align:center;font-family:var(--sans);font-size:.76rem;line-height:1.45;color:var(--muted)}
 .merci{margin:14px 0 0;text-align:center;font-style:italic;font-size:1.15rem;color:var(--gold)}
 .after .lbtn{margin:0}
+.rappel{max-width:340px;margin:22px auto 0;padding:16px;border:1px solid var(--line);border-radius:14px;background:rgba(242,235,224,.03);text-align:center}
+.rappel .q{margin:0 0 12px;font-family:var(--serif);font-style:italic;font-size:1.12rem;line-height:1.4;color:var(--ink)}
+.rap-b{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rap-b .lbtn{margin:0;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.rap-non{display:block;margin:8px auto 0;min-height:44px;padding:0 12px;background:none;border:0;color:var(--muted);font-family:var(--sans);font-size:.82rem;text-decoration:underline;cursor:pointer}
+.rappel .merci{margin:0}
 
 /* 1. La rose */
 .rose-g{position:absolute;inset:0}
@@ -521,6 +527,41 @@ document.addEventListener('visibilitychange', () => {
   if(document.hidden) a.pause(); else if(Snd.on && Music.want){ const pr = a.play(); if(pr) pr.catch(() => {}); }
 });
 
+/* Rappel dans son agenda, chaque soir à l'heure du déblocage.
+   iPhone : le fichier rappel.ics (à 21 h, écrit en dur : le refaire si HEURE_DEBLOCAGE change).
+   Android : la page « nouvel événement » de Google Agenda, répétée chaque jour.
+   Proposé tant qu'elle n'a ni accepté ni dit « Non merci ». */
+const URL_GRIMOIRE = 'https://legenienumerique.github.io/rose-q7mwa2/grimoire/';
+function lienAndroid(){
+  const c = clock(), d = new Date(c);
+  if(c.getHours() >= HEURE_DEBLOCAGE) d.setDate(d.getDate() + 1);
+  const j = iso(d).replace(/-/g, ''), h = pad(HEURE_DEBLOCAGE);
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent('Le grimoire s\'éveille ✦')
+    + '&dates=' + j + 'T' + h + '0000/' + j + 'T' + h + '1500&ctz=Europe/Paris'
+    + '&recur=' + encodeURIComponent('RRULE:FREQ=DAILY')
+    + '&details=' + encodeURIComponent('Une nouvelle page t\'attend.\n' + URL_GRIMOIRE);
+}
+function inviteRappel(where){
+  if(S.rappel) return;
+  const box = el('div', 'rappel'); box.setAttribute('role', 'group'); box.setAttribute('aria-label', 'Rappel du soir');
+  box.innerHTML = '<p class="q">Veux-tu que ton téléphone te prévienne chaque soir à ' + HEURE_DEBLOCAGE + ' h, quand une page s\'éveille ?</p>'
+    + '<div class="rap-b"><a class="lbtn" href="rappel.ics">Sur iPhone</a>'
+    + '<a class="lbtn" href="' + esc(lienAndroid()) + '" target="_blank" rel="noopener">Sur Android</a></div>'
+    + '<button class="rap-non" type="button">Non merci</button>'
+    + '<p class="sur">Ton agenda te demandera de confirmer. Tu pourras supprimer le rappel quand tu veux.</p>';
+  const fini = (v, msg) => {
+    S.rappel = v; saveS();
+    document.querySelectorAll('.rappel').forEach(b => {
+      if(msg){ b.innerHTML = '<p class="merci">' + msg + '</p>'; } else b.remove();
+    });
+    if(msg) announce(msg);
+  };
+  box.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setTimeout(() => fini('ok', 'C\'est noté. Valide l\'ajout dans ton agenda.'), 400)));
+  box.querySelector('.rap-non').onclick = () => fini('non');
+  where.append(box);
+}
+
 /* Choix de la musique d'un soir :
    colonne « musique » du Sheet = un nom de fichier (ex. Desire) ou une ambiance (douce / intense) ;
    sinon l'ambiance du geste. Elles tournent d'un soir à l'autre. */
@@ -785,7 +826,7 @@ function showSleep(){
   d.innerHTML = CAT_SLEEP + '<h1 class="msg">Le grimoire dort encore. Reviens à la tombée de la nuit, princesse.</h1>'
     + '<p class="cd" role="timer" aria-live="off">Il s\'éveille dans <b aria-hidden="true"></b><span class="sr-only">quelques heures, à ' + HEURE_DEBLOCAGE + ' heures.</span></p>';
   if(ST.list.length){ const b = el('button', 'lbtn', 'Feuilleter les pages passées'); b.type = 'button'; b.onclick = () => { location.hash = 'sommaire'; }; d.append(b); }
-  inviteSon(d);
+  inviteSon(d); inviteRappel(d);
   view.append(d);
   const out = d.querySelector('.cd b');
   const tick = () => {
@@ -802,7 +843,7 @@ function showInk(){
   const d = el('section', 'screen');
   d.innerHTML = INK + '<h1 class="msg">L\'encre n\'a pas encore séché. Reviens un peu plus tard.</h1>';
   if(ST.list.length){ const b = el('button', 'lbtn', 'Feuilleter les pages passées'); b.type = 'button'; b.onclick = () => { location.hash = 'sommaire'; }; d.append(b); }
-  inviteSon(d);
+  inviteSon(d); inviteRappel(d);
   view.append(d);
   later(boot, 120000);   // on réessaie toutes les 2 minutes
 }
@@ -875,7 +916,7 @@ function showPage(p, opt){
       if(RM) reading.classList.add('show'); else requestAnimationFrame(() => reading.classList.add('show'));
       markRead(p.date); buzz(18); after.hidden = false;
       curMode = 'plein'; Music.swell();
-      later(() => buildToi(p, art.querySelector('.toi')), RM ? 0 : 1800);
+      later(() => { buildToi(p, art.querySelector('.toi')); inviteRappel(art); }, RM ? 0 : 1800);
       later(() => { reading.scrollIntoView({behavior:RM ? 'auto' : 'smooth', block:'start'}); focusSoft(reading); }, RM ? 0 : 380);
     }
   };
@@ -895,7 +936,7 @@ function showPage(p, opt){
     // Page déjà lue : on l'affiche directement
     stage.hidden = true; alt.hidden = true; hint.hidden = true;
     reading.hidden = false; reading.classList.add('show', 'nofade'); after.hidden = false;
-    buildToi(p, art.querySelector('.toi'));
+    buildToi(p, art.querySelector('.toi')); inviteRappel(art);
     const r = el('button', 'lbtn', 'Rejouer le geste'); r.type = 'button'; r.onclick = () => showPage(p, Object.assign({}, opt, {replay:true}));
     after.append(r);
     if(opt.from === 'som') focusSoft(art.querySelector('h1'));
