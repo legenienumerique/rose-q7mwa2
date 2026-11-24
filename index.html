@@ -6,6 +6,12 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0a0a0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="La rose">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>La dernière rose</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%80%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -431,6 +437,29 @@ html.rm #veil.title .veil-o,html.rm #veil.title .veil-n,html.rm #veil.title .vei
 .masque-glow{position:absolute;left:50%;top:44%;width:70vmin;height:70vmin;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,236,200,.35),rgba(255,200,140,0) 65%);opacity:0;transition:opacity 2s;pointer-events:none}
 .masque-glow.on{opacity:1}
 .mq-hint{position:absolute;left:0;right:0;top:calc(44% + min(26vw,110px));text-align:center;font-family:var(--sans);font-size:.8rem;color:var(--muted);transition:opacity .4s;pointer-events:none}
+
+/* ===== Accueil : vidéo d'introduction et installation ===== */
+.seuil{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;overflow-y:auto;text-align:center;
+  padding:calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 28%,#2a0d12,#0a0a0a 72%)}
+.seuil-in{width:100%;max-width:380px;margin:auto}
+.seuil-ic{display:block;width:92px;height:92px;margin:0 auto 18px;border-radius:22px;box-shadow:0 0 44px rgba(208,33,63,.35),0 0 0 1px rgba(201,169,110,.35)}
+.seuil-k{font-family:var(--sans);font-size:.7rem;letter-spacing:.35em;text-transform:uppercase;color:var(--gold);margin:0 0 .7rem}
+.seuil h1{font-weight:500;font-style:italic;font-size:2.25rem;line-height:1.15;margin:0 0 .9rem;color:var(--ink)}
+.seuil-t{font-size:1.18rem;line-height:1.45;margin:0 0 1rem;color:var(--ink)}
+.seuil-s{font-family:var(--sans);font-size:.82rem;line-height:1.5;color:var(--muted);margin:1rem 0 0}
+.seuil ol{list-style:none;counter-reset:e;text-align:left;margin:0 0 1rem;padding:14px 16px;border:1px solid rgba(201,169,110,.35);border-radius:4px;background:rgba(10,10,10,.5)}
+.seuil ol li{counter-increment:e;position:relative;padding-left:30px;margin:0 0 .55rem;font-family:var(--sans);font-size:.95rem;line-height:1.45}
+.seuil ol li:last-child{margin-bottom:0}
+.seuil ol li::before{content:counter(e);position:absolute;left:0;top:0;width:20px;height:20px;border-radius:50%;border:1px solid var(--gold);color:var(--gold);font-size:.72rem;line-height:20px;text-align:center}
+.seuil .ico{display:inline-block;vertical-align:-3px;width:16px;height:18px;color:var(--gold)}
+.seuil .btn{display:block;margin-top:10px}
+.seuil-c{list-style:none;padding:0;margin:1.2rem 0 0;text-align:left;font-family:var(--sans);font-size:.8rem;line-height:1.5;color:var(--muted)}
+.seuil-c li{margin:0 0 .35rem;padding-left:16px;position:relative}
+.seuil-c li::before{content:"❦";position:absolute;left:0;color:var(--gold);font-size:.7rem}
+.intro-v{position:fixed;inset:0;z-index:80;background:#000}
+.intro-v video{width:100%;height:100%;object-fit:cover;background:#000}
+.intro-skip{position:absolute;top:max(16px,env(safe-area-inset-top));right:16px;min-height:44px;padding:0 18px;border-radius:2px;border:1px solid rgba(242,235,224,.35);
+  background:rgba(0,0,0,.45);color:var(--ink);font-family:var(--sans);font-size:.85rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -2107,6 +2136,7 @@ function titleScreen(){
     acts.append(b1, b2);
   } else { const b = btn('Ouvrir le conte', 'primary'); b.onclick = () => go(0); acts.append(b); }
   acts.append(el('p', 'sound-hint', 'Son conseillé, à faible volume.'));
+  if(accGet().intro){ const rv = btn('Revoir l\'introduction', 'ghost'); rv.onclick = () => { Music.stop(.4); jouerIntro(titleScreen); }; acts.append(rv); }
   const sb = el('button', 'tbtn soundbtn inline'); sb.type = 'button'; acts.append(sb);
   syncSound();
   function go(i){ clearActs(); run(i); }
@@ -2121,8 +2151,104 @@ if(!RM){
     b.append(i2); p.append(b); pbox.append(p);
   }
 }
+
+/* =========================================================
+   9. ACCUEIL : la vidéo d'introduction (une seule fois), puis l'installation
+   ?intro=1 rejoue l'accueil complet ; ?vu=1 = intro déjà vue (adresse de l'appli iPhone)
+   ========================================================= */
+const QS = new URLSearchParams(location.search);
+const STANDALONE = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const ANDROID = /Android/i.test(navigator.userAgent);
+const DANS_APPLI = /Instagram|FBAN|FBAV|Line\/|Snapchat|TikTok|musical_ly|Bytedance/i.test(navigator.userAgent);
+const ACC_KEY = 'derniererose.accueil';
+function accGet(){ try{ return JSON.parse(localStorage.getItem(ACC_KEY)) || {}; }catch(e){ return {}; } }
+function accSet(k, v){ const a = accGet(); a[k] = v; try{ localStorage.setItem(ACC_KEY, JSON.stringify(a)); }catch(e){} }
+if(QS.get('intro') === '1'){ try{ localStorage.removeItem(ACC_KEY); }catch(e){} }
+else if(QS.get('vu') === '1') accSet('intro', 1);   // iPhone : l'appli installée a sa propre mémoire, son adresse le lui dit
+if(STANDALONE) accSet('install', 'ok');
+let promptInstall = null, majInstall = () => {};
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); promptInstall = e; majInstall(); });
+window.addEventListener('appinstalled', () => { accSet('install', 'ok'); majInstall('ok'); });
+if(!STANDALONE && navigator.getInstalledRelatedApps) navigator.getInstalledRelatedApps().then(l => { if(l && l.length) accSet('install', 'ok'); }).catch(() => {});
+if('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))){
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+
+/* La vidéo d'introduction, plein écran, avec « Passer ». À lancer pendant un toucher (le son en dépend). */
+function jouerIntro(suite){
+  const w = el('div', 'intro-v');
+  w.innerHTML = '<video playsinline preload="auto" src="intro.mp4?v=1" aria-describedby="intro-txt"></video><button class="intro-skip" type="button">Passer</button>'
+    + '<p id="intro-txt" class="sr-only">La nuit, une fenêtre ouverte sur la mer et la lune. Sous une cloche de verre, une rose fanée perd son dernier pétale. Contre la cloche, une lettre scellée de cire rouge. Puis la rose se redresse et refleurit dans une lumière d\'or. La dernière rose. Un conte pour toi. Signé Dieu.</p>';
+  document.body.append(w);
+  const v = w.querySelector('video');
+  v.muted = !Snd.on;
+  let fini = false;
+  const done = () => { if(fini) return; fini = true; accSet('intro', 1); try{ v.pause(); }catch(e){} w.remove(); suite(); };
+  v.onended = done; v.onerror = done;
+  w.querySelector('.intro-skip').onclick = done;
+  const pr = v.play(); if(pr) pr.catch(() => { v.muted = true; v.play().catch(done); });
+  focusSoft(w.querySelector('.intro-skip'));
+}
+
+const ICO_PARTAGE = '<svg class="ico" viewBox="0 0 16 18" aria-hidden="true"><path d="M8 1v11M4 5l4-4 4 4M3 8H1.5v9h13V8H13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+/* La première visite : l'accueillir, et lui montrer comment installer le conte */
+function ecranInstall(){
+  if(IOS && !STANDALONE && history.replaceState){ try{ history.replaceState(history.state, '', location.pathname + '?vu=1' + location.hash); }catch(e){} }
+  const d = el('div', 'seuil'); d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Bienvenue');
+  const inn = el('div', 'seuil-in'); d.append(inn);
+  const fermer = () => { d.remove(); titleScreen(); };
+  const ici = () => { const b = btn('Commencer ici, sans installer', 'ghost'); b.onclick = () => { accSet('install', 'non'); fermer(); }; return b; };
+  function fin(){
+    inn.innerHTML = '<img class="seuil-ic" src="icone-192.png" alt=""><p class="seuil-k">C\'est prêt</p><h1>Parfait.</h1>'
+      + '<p class="seuil-t">Ferme cette page, puis touche l\'icône <b>La rose</b> sur ton écran d\'accueil. Le conte t\'attend là-bas.</p>';
+    const b = btn('Finalement, commencer ici', 'ghost'); b.onclick = fermer; inn.append(b);
+    focusSoft(inn.querySelector('h1'));
+  }
+  majInstall = v => { if(v === 'ok') fin(); else if(d.isConnected && !inn.querySelector('.inst-go') && promptInstall && ANDROID && !DANS_APPLI) dessiner(); };
+  function dessiner(){
+    let etapes = [], bouton = null;
+    if(DANS_APPLI) etapes = ['Touche les trois points <b>⋯</b> en haut à droite.', 'Choisis « Ouvrir dans le navigateur » (ou « dans Safari »).', 'Tu retrouveras cette page là-bas, avec la suite.'];
+    else if(IOS) etapes = ['Touche le bouton Partager ' + ICO_PARTAGE + ' (en bas de l\'écran, ou à côté de l\'adresse).', 'Fais défiler et choisis « Sur l\'écran d\'accueil ».', 'Touche « Ajouter » : une rose apparaît parmi tes applis.'];
+    else if(promptInstall){ bouton = btn('Installer La dernière rose', 'primary inst-go'); }
+    else etapes = ['Touche les trois points <b>⋮</b> en haut à droite.', 'Choisis « Ajouter à l\'écran d\'accueil » ou « Installer l\'application ».', 'Confirme : une rose apparaît parmi tes applis.'];
+    inn.innerHTML = '<img class="seuil-ic" src="icone-192.png" alt=""><p class="seuil-k">Bienvenue</p><h1>Bonsoir, princesse.</h1>'
+      + '<p class="seuil-t">Ce conte a été écrit pour toi. Il se vit comme une petite appli : en plein écran, avec sa musique, sans rien autour.</p>'
+      + '<p class="seuil-t">Avant de commencer, installe-le sur ton écran d\'accueil. Dix secondes, promis.</p>'
+      + (etapes.length ? '<ol>' + etapes.map(t => '<li>' + t + '</li>').join('') + '</ol>' : '');
+    if(bouton){ inn.append(bouton); bouton.onclick = async () => { const e = promptInstall; if(!e) return; promptInstall = null; try{ e.prompt(); const r = await e.userChoice; if(r && r.outcome === 'accepted'){ accSet('install', 'ok'); fin(); } else dessiner(); }catch(x){} }; }
+    if(etapes.length && !DANS_APPLI){ const f = btn('C\'est fait, la rose est sur mon écran', bouton ? '' : 'primary'); f.onclick = () => { accSet('install', 'ok'); fin(); }; inn.append(f); }
+    inn.append(ici());
+    inn.append(html('ul', 'seuil-c', '<li>Prévois une dizaine de minutes, au calme, le soir de préférence.</li><li>Mets le son, pas trop fort : la musique fait partie de l\'histoire.</li><li>Tu peux t\'arrêter quand tu veux : le conte reprendra au chapitre où tu étais.</li>'));
+  }
+  dessiner();
+  document.body.append(d);
+  focusSoft(inn.querySelector('h1'));
+}
+
+/* L'arrivée : intro (une fois) → installation (téléphone, hors appli, tant qu'elle n'a pas choisi) → écran titre */
+function apresIntro(){
+  const a = accGet();
+  if(!STANDALONE && (IOS || ANDROID) && !a.install) ecranInstall();
+  else titleScreen();
+}
+function accueil(){
+  if(accGet().intro){ apresIntro(); return; }
+  setScene(sceneRoom({life:.12}));
+  who.hidden = true; txt.textContent = ''; pageno.textContent = ''; clearActs();
+  const d = el('div', 'seuil');
+  d.innerHTML = '<div class="seuil-in"><img class="seuil-ic" src="icone-192.png" alt=""><p class="seuil-k">Pour toi, princesse</p><h1>La dernière rose</h1>'
+    + '<p class="seuil-t">Monte un peu le son, puis entre.</p></div>';
+  const b = btn('Entrer', 'primary'); d.firstChild.append(b);
+  document.body.append(d); focusSoft(b);
+  b.onclick = () => {
+    try{ if(!Snd.on) Snd.toggle(); syncSound(); }catch(e){}   // « Entrer » allume le son du conte (le bouton du haut le coupe)
+    d.remove();
+    jouerIntro(apresIntro);
+  };
+}
 syncSound();
-titleScreen();
+accueil();
 })();
 </script>
 </body>
