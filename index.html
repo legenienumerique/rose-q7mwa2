@@ -401,13 +401,43 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
 html.rm #petals,html.rm #grain{display:none}
 html.rm .notif,html.rm .tt-c{opacity:1;transform:none}
 html.rm #veil.title .veil-o,html.rm #veil.title .veil-n,html.rm #veil.title .veil-t{opacity:1}
+
+/* ===== Version 2 (29/11) : le ciel du grimoire, le masque ===== */
+.ciel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center}
+.ciel-svg{flex:1;width:100%;min-height:0}
+.ciel-svg line{stroke:rgba(201,169,110,.75);stroke-width:.45;stroke-linecap:round}
+.ciel-svg .cs{cursor:pointer;outline:none}
+.ciel-svg .cs .hit{fill:transparent}
+.ciel-svg .cs .dot{fill:rgba(242,235,224,.28);transition:fill .5s,r .5s}
+.ciel-svg .cs.cur .dot{fill:#fff4d6;animation:cspulse 1.3s ease-in-out infinite}
+.ciel-svg .cs.on .dot{fill:#f4d58a}
+.ciel-svg .cs.on .halo{opacity:1}
+.ciel-svg .halo{fill:url(#cshalo);opacity:0;transition:opacity .8s}
+.ciel-svg .cs:focus-visible .dot{stroke:var(--gold);stroke-width:.5}
+.ciel-svg .cname{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:5px;fill:var(--gold);opacity:0;transition:opacity 1.2s;text-anchor:middle}
+.ciel-svg .cname.on{opacity:1}
+@keyframes cspulse{50%{opacity:.45}}
+.ciel-cap{min-height:7.2em;width:100%;max-width:380px;padding:0 22px 76px;text-align:center}
+.ciel-cap .cd{font-family:var(--sans);font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin:0 0 .35rem}
+.ciel-cap .co{font-style:italic;font-size:1.05rem;color:var(--muted);margin:0 0 .25rem}
+.ciel-cap .cc{font-size:1.18rem;line-height:1.35;color:var(--ink);margin:0}
+.ciel-top{font-family:var(--sans);font-size:.78rem;color:var(--muted);margin:18px 0 0;text-align:center}
+.masque{position:absolute;left:50%;top:44%;width:min(78%,300px);transform:translate(-50%,-50%);background:none;border:0;padding:0;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.masque svg{width:100%;display:block;filter:drop-shadow(0 10px 30px rgba(0,0,0,.7)) drop-shadow(0 0 calc(var(--p,0) * 26px) rgba(201,169,110,.55))}
+.masque .crk{opacity:0;transition:opacity .25s}
+.masque .crk.on{opacity:1}
+.masque.fall{transition:transform 1.6s cubic-bezier(.5,0,.9,.6),opacity 1.6s;transform:translate(-50%,140%) rotate(24deg);opacity:0}
+.masque:focus-visible{outline:1px solid var(--gold);outline-offset:8px}
+.masque-glow{position:absolute;left:50%;top:44%;width:70vmin;height:70vmin;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,236,200,.35),rgba(255,200,140,0) 65%);opacity:0;transition:opacity 2s;pointer-events:none}
+.masque-glow.on{opacity:1}
+.mq-hint{position:absolute;left:0;right:0;top:calc(44% + min(26vw,110px));text-align:center;font-family:var(--sans);font-size:.8rem;color:var(--muted);transition:opacity .4s;pointer-events:none}
 </style>
 </head>
 <body>
 <div id="app">
   <header class="top">
     <button id="restart" class="tbtn" type="button">Recommencer</button>
-    <ol class="prog" aria-label="Progression du conte"><li>I</li><li>II</li><li>III</li><li>IV</li><li>V</li></ol>
+    <ol class="prog" aria-label="Progression du conte"><li>I</li><li>II</li><li>III</li><li>IV</li><li>V</li><li>VI</li></ol>
     <button class="tbtn soundbtn" type="button" aria-pressed="false"></button>
   </header>
   <main id="scene"></main>
@@ -448,80 +478,50 @@ const CUES = {
   fin:      {src:"audio/fin.mp3",      loop:[60, 249]}
 };
 
-const CHAPITRES = ["La princesse du 13", "Le rêve", "Les quatre mots", "Le dossier céleste", "La route", "La lettre", "Le bon"];
+const CHAPITRES = ["La princesse du 13", "La phrase", "Les quatre mots", "Le grimoire", "Le masque", "La route", "La dernière rose", "Le bon"];
 
 const BON = {
-  lignes: ["Une balade au coucher du soleil.", "Toi derrière.", "Tes bras autour de ma taille."],
+  lignes: ["Une balade à moto", "au coucher du soleil.", "Toi derrière."],
   validite: "Valable sans date d'expiration.",
   signature: "— Dieu",
   ps: "P.S. Le date des boulangeries du Sud reste prévu. Quand on sera vieux et grincheux."
 };
 
-const KM_TOTAL = 314;
-
-/* Le dossier céleste : les questions sur elle.
-   k = intitulé dans le message qu'elle t'enverra ; a = [réponse, réaction du greffier] */
-const QUESTIONS = [
-  {k:"Son moment préféré", q:"Le moment de la journée où tu es le plus toi ?", a:[
-    ["Le lever du soleil", "« Matinale. Il va devoir acheter un réveil. »"],
-    ["Le coucher du soleil", "« Romantique. Le dossier rougit déjà. »"],
-    ["Minuit passé", "« Une créature de la nuit. Comme lui. Intéressant. »"],
-    ["La sieste, sacrée", "« Respect. La sieste est un art. »"]]},
-  {k:"Ce qui la fait rire", q:"Ce qui te fait rire à coup sûr ?", a:[
-    ["L'humour absurde", "« Il a une réserve infinie de bêtises. Ça tombe bien. »"],
-    ["Les gens qui tombent", "« Cruel. Il marchera prudemment. »"],
-    ["Mes propres blagues", "« Autonome. Il prendra des notes. »"],
-    ["Lui, apparemment", "« Il va être insupportable quand il lira ça. »"]]},
-  {k:"Son refuge", q:"Ton refuge quand le monde est trop bruyant ?", a:[
-    ["La mer", "« Évidemment. Une princesse du 13. »"],
-    ["La musique, fort", "« Noté : ne jamais toucher au volume. »"],
-    ["Mes chats", "« Les vrais patrons. Il le sait. »"],
-    ["Écrire", "« Il aimerait te lire un jour. S'il est sage. »"]]},
-  {k:"Son rêve secret", q:"Un rêve que tu n'as jamais dit à voix haute ?", a:[
-    ["Partir vivre ailleurs", "« Il demande où. Pour réviser sa géographie. »"],
-    ["Créer quelque chose à moi", "« Ambitieuse. Il adore. »"],
-    ["Une famille, un jour", "« Noté. Avec beaucoup de délicatesse. »"],
-    ["Ça reste secret", "« Le greffier respecte. Il essaiera de deviner. »"]]},
-  {k:"Ce qui la fait craquer", q:"Ce qui te fait craquer chez quelqu'un ?", a:[
-    ["Le regard", "« Il va s'entraîner devant le miroir. »"],
-    ["La voix", "« Il parlera plus bas. Exprès. »"],
-    ["L'humour", "« Pression maximale sur ses blagues. »"],
-    ["Les mains", "« Le greffier ne fera aucun commentaire. Il rougit, c'est tout. »"]]},
-  {k:"Son langage de l'amour", q:"Ta façon préférée d'être aimée ?", a:[
-    ["Les mots doux", "« Il en a en réserve. Beaucoup. »"],
-    ["Les gestes, le contact", "« Noté. Souligné. Deux fois. »"],
-    ["Le temps passé ensemble", "« 4 h de route, ça compte double ? »"],
-    ["Les petites attentions", "« Des pains au chocolat encore chauds, ça marche ? »"]]},
-  {k:"Sa peur en amour", q:"Ce qui te fait peur, en amour ?", a:[
-    ["Être déçue", "« Il fera tout pour que non. »"],
-    ["Trop m'attacher", "« Risque assumé. Des deux côtés. »"],
-    ["La routine", "« Avec lui ? Peu probable. »"],
-    ["Rien, je suis une guerrière", "« Il s'en doutait. C'est lui qui a peur. »"]]},
-  {k:"Sa technique de séduction", q:"Ta technique de séduction ?", a:[
-    ["Le regard en coin", "« Efficace. Il en témoigne. »"],
-    ["L'humour", "« Prouvé : il rit encore. »"],
-    ["L'indifférence calculée", "« Il n'est pas dupe. Enfin… un peu. »"],
-    ["Je ne séduis pas, je règne", "« Le greffier s'incline. »"]]},
-  {k:"Le baiser parfait", q:"Le baiser parfait ?", a:[
-    ["Volé, sans prévenir", "« Il est prévenu. Enfin… non. »"],
-    ["Attendu longtemps", "« La patience a ses récompenses. »"],
-    ["Sous la pluie, cliché assumé", "« Il surveillera la météo. »"],
-    ["Je te montrerai", "« Le greffier referme le dossier. Tout rouge. »"]]},
-  {k:"Ce soir, elle pense à toi", q:"Ce soir, tu penses à lui…", a:[
-    ["Un peu", "« Un peu, c'est déjà beaucoup. »"],
-    ["Beaucoup", "« Il ne s'en remettra pas. »"],
-    ["À la folie", "« Le greffier a dû s'asseoir. »"],
-    ["Pas du tout (menteuse)", "« Le dossier note : menteuse adorable. »"]]}
+/* Les trois bons au choix (épilogue) : k = bouton, lignes = le bon */
+const BONS = [
+  {k:"La balade à moto", lignes:["Une balade à moto", "au coucher du soleil.", "Toi derrière."]},
+  {k:"Le musée des étoiles", lignes:["Un musée des étoiles.", "Et un chocolat chaud", "après."]},
+  {k:"Les boutiques de mangas", lignes:["Une après-midi", "dans les boutiques de mangas.", "Pour préparer la tienne."]}
 ];
 
+/* Le ciel du grimoire : les 14 soirs, une étoile par page (Ariane puis la Lyre).
+   x, y dans un cadre de 100 × 160 ; d = date ; o = l'œuvre ; c = un fragment de la page */
+const CIEL_PAGES = [
+  {x:22, y:34, d:"15 nov.", o:"Le Petit Prince", c:"« Le temps que tu as perdu pour ta rose… »"},
+  {x:28, y:45, d:"16 nov.", o:"Paul Éluard", c:"« La courbe de tes yeux fait le tour de mon cœur »"},
+  {x:38, y:52, d:"17 nov.", o:"Lu quelque part", c:"« L'amour, ce n'est pas convaincre quelqu'un… »"},
+  {x:50, y:55, d:"18 nov.", o:"Haikyu!!", c:"« Tant que je suis là, tu es invincible. »"},
+  {x:62, y:52, d:"19 nov.", o:"Slam Dunk", c:"« Si tu abandonnes, le match est déjà terminé. »"},
+  {x:72, y:45, d:"20 nov.", o:"Naruto", c:"« Je ne reviens jamais sur ma parole. »"},
+  {x:78, y:34, d:"21 nov.", o:"Violet Evergarden", c:"« Vis… et sois libre. »"},
+  {x:52, y:84, d:"22 nov.", o:"Victor Hugo", c:"« La réduction de l'univers à un seul être »"},
+  {x:42, y:98, d:"23 nov.", o:"Baudelaire", c:"« Luxe, calme et volupté. »"},
+  {x:60, y:99, d:"24 nov.", o:"Sappho", c:"« Quelqu'un se souviendra de nous. »"},
+  {x:65, y:120, d:"25 nov.", o:"Louise Labé", c:"« Je vis, je meurs… »"},
+  {x:54, y:138, d:"26 nov.", o:"Le Petit Prince", c:"Les étoiles, éclairées pour que chacun retrouve la sienne."},
+  {x:38, y:132, d:"27 nov.", o:"Jane Eyre", c:"« Je ne suis pas un oiseau. »"},
+  {x:44, y:112, d:"28 nov.", o:"Dieu", c:"« Je ne suis pas vraiment Dieu. »"}
+];
 
-/* Les phrases de roman qui s'écrivent dans le ciel pendant la balade (moment de 0 à 1) */
+const KM_TOTAL = 314;
+
+/* Les phrases qui s'écrivent dans le ciel pendant la route (moment de 0 à 1) */
 const ROMAN_MOTO = [
-  [0.05, "Le vent se glisse dans tes cheveux. Tu fermes les yeux une seconde."],
-  [0.24, "Tes bras se serrent autour de sa taille. Un peu plus fort que nécessaire. Il fait semblant de ne pas remarquer."],
-  [0.43, "Il ralentit dans les virages. Pour ta sécurité, dit-il. Pour sentir tes mains, pense-t-il."],
-  [0.62, "Tu as chaud. C'est le soleil, évidemment. Évidemment."],
-  [0.80, "Tu poses ta joue contre son dos. Au loin, quelque chose brille entre les arbres : un lac."]
+  [0.05, "Quatre heures de route. Il s'est promis de ne pas compter les minutes. Il les compte quand même."],
+  [0.24, "Il répète ses premières phrases à voix haute. Aucune ne tient jusqu'au péage suivant."],
+  [0.43, "Le 69 s'efface dans le rétroviseur. Devant, le ciel tourne à l'orange."],
+  [0.62, "Il pense à Orphée : surtout, ne pas se retourner. Facile. Tout ce qu'il veut est devant."],
+  [0.80, "Entre les pins, la mer apparaît. Son cœur, lui, est arrivé depuis longtemps."]
 ];
 
 /* =========================================================
@@ -532,8 +532,8 @@ if(RM) document.documentElement.classList.add('rm');
 const $ = s => document.querySelector(s);
 const sceneEl = $('#scene'), box = $('#box'), txt = $('#txt'), who = $('#who'), acts = $('#acts'),
       more = $('#more'), skipBtn = $('#skiptype'), pageno = $('#pageno'), sr = $('#sr'), veil = $('#veil');
-const ROMAN = ["I","II","III","IV","V"];
-const KEY = "derniererose.v3";
+const ROMAN = ["I","II","III","IV","V","VI"];
+const KEY = "derniererose.v4";
 
 function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
 function btn(label, cls){ const b = el('button', 'btn ' + (cls||''), label); b.type = 'button'; return b; }
@@ -741,7 +741,7 @@ function fit(node, k){
 }
 function setProgress(n){
   document.querySelectorAll('.prog li').forEach((li, i) => {
-    li.classList.toggle('done', i < n - 1 || n > 5);
+    li.classList.toggle('done', i < n - 1 || n > 6);
     if(i === n - 1) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
   });
 }
@@ -1293,109 +1293,123 @@ function motes(scene, n){
   }
 }
 
-/* Chapitre III — le dossier céleste : des questions sur elle, réponses transmises à la fin (avec son accord) */
-function gameDossier(g){
+/* Chapitre III — le ciel du grimoire : rallumer les 14 étoiles, une par soir */
+function gameCiel(g){
   g.area.innerHTML = '<div class="sky">' + STARS + '</div>';
-  const wrap = el('div', 'sort dos'); g.area.append(wrap);
-  const prog = html('div', 'timer', '<i></i>'), q = el('p', 'sort-q', ''), deck = el('div', 'deck'), fb = el('p', 'sort-fb', ''), opts = el('div', 'qopts');
-  fb.setAttribute('aria-live', 'polite');
-  wrap.append(prog, q, deck, fb, opts);
-  mem.dossier = [];
-  const N = QUESTIONS.length;
+  const wrap = el('div', 'ciel'); g.area.append(wrap);
+  const top = el('p', 'ciel-top', "Touche l'étoile qui brille");
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 160'); svg.setAttribute('class', 'ciel-svg'); svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.innerHTML = '<defs><radialGradient id="cshalo"><stop offset="0" stop-color="#fff0c8" stop-opacity=".8"/><stop offset="1" stop-color="#f4d58a" stop-opacity="0"/></radialGradient></defs>'
+    + '<g class="lines"></g>'
+    + '<text class="cname" x="50" y="22">La Couronne d\'Ariane</text><text class="cname" x="50" y="154">La Lyre d\'Orphée</text>';
+  const cap = html('div', 'ciel-cap', '<p class="cd"></p><p class="co"></p><p class="cc"></p>');
+  cap.setAttribute('aria-live', 'polite');
+  wrap.append(top, svg, cap);
+  const lines = svg.querySelector('.lines'), names = svg.querySelectorAll('.cname');
+  const stars = CIEL_PAGES.map((p, i) => {
+    const gS = document.createElementNS(NS, 'g');
+    gS.setAttribute('class', 'cs'); gS.setAttribute('tabindex', '-1'); gS.setAttribute('role', 'button');
+    gS.setAttribute('aria-label', 'Étoile ' + (i + 1) + ' : ' + p.d);
+    gS.innerHTML = '<circle class="halo" cx="' + p.x + '" cy="' + p.y + '" r="7"/><circle class="dot" cx="' + p.x + '" cy="' + p.y + '" r="' + (i === 7 ? 2 : 1.5) + '"/><circle class="hit" cx="' + p.x + '" cy="' + p.y + '" r="7"/>';
+    svg.append(gS); return gS;
+  });
   return new Promise(res => {
     let i = 0, busy = false;
-    function show(){
-      if(i >= N) return last();
-      const Q = QUESTIONS[i];
-      prog.firstChild.style.transform = 'scaleX(' + (i / N).toFixed(3) + ')';
-      q.textContent = 'Rubrique ' + (i + 1) + ' sur ' + N;
-      const cd = html('div', 'card', '<span class="ck">Dossier céleste</span><span class="cv"></span><span class="tag ok">Noté</span>');
-      cd.querySelector('.cv').textContent = Q.q; deck.append(cd);
-      opts.textContent = '';
-      Q.a.forEach(a => { const b = btn(a[0]); b.onclick = () => pick(a[0], a[1], cd); opts.append(b); });
-      const j = btn('Garder le mystère', 'ghost'); j.onclick = () => pick(null, "« Mystérieuse. Il adore ça aussi. »", cd); opts.append(j);
-      announce('Rubrique ' + (i + 1) + ' : ' + Q.q);
-      focusSoft(opts.firstChild);
+    function setCur(){
+      stars.forEach((s, k) => { s.classList.toggle('cur', k === i); s.setAttribute('tabindex', k === i ? '0' : '-1'); });
+      if(stars[i]) focusSoft(stars[i]);
     }
-    function pick(label, r, cd){
-      if(busy || !g.alive) return; busy = true;
-      mem.dossier.push({k:QUESTIONS[i].k, a:label});
-      fb.textContent = r;
-      Snd.sfx('stamp'); buzz(25);
-      cd.querySelector('.tag.ok').style.opacity = 1;
-      setTimeout(() => { cd.style.transition = 'transform .45s ease-in,opacity .45s'; cd.style.transform = 'translateX(140%) rotate(22deg)'; cd.style.opacity = 0; }, 380);
-      setTimeout(() => { cd.remove(); i++; busy = false; if(g.alive) show(); }, 860);
+    function line2(a, b){
+      const L = document.createElementNS(NS, 'line');
+      L.setAttribute('x1', a.x); L.setAttribute('y1', a.y); L.setAttribute('x2', b.x); L.setAttribute('y2', b.y);
+      if(!RM && L.animate){ const len = Math.hypot(b.x - a.x, b.y - a.y); L.style.strokeDasharray = len; L.animate([{strokeDashoffset:len}, {strokeDashoffset:0}], {duration:600, easing:'ease-out', fill:'both'}); }
+      lines.append(L);
     }
-    function last(){
-      prog.firstChild.style.transform = 'scaleX(1)';
-      q.textContent = 'Dernière rubrique · facultative';
-      const cd = html('div', 'card mot', '<span class="ck">Un mot pour lui ?</span>');
-      const lab = el('label', 'sr-only', 'Un mot pour lui, facultatif'); lab.htmlFor = 'mot';
-      const ta = document.createElement('textarea'); ta.id = 'mot'; ta.className = 'field mot-f'; ta.maxLength = 280; ta.rows = 4; ta.placeholder = 'Ce que tu veux. Ou rien du tout.';
-      cd.append(lab, ta); deck.append(cd);
-      opts.textContent = '';
-      const ok = btn('Ajouter au dossier', 'primary'), no = btn('Rien, il devinera', 'ghost');
-      ok.onclick = () => end(ta.value.trim()); no.onclick = () => end('');
-      opts.append(ok, no);
+    async function hit(k){
+      if(busy || !g.alive) return;
+      if(k !== i){ buzz(8); return; }
+      busy = true;
+      const p = CIEL_PAGES[i];
+      stars[i].classList.remove('cur'); stars[i].classList.add('on');
+      if(i > 0 && i !== 7) line2(CIEL_PAGES[i - 1], p);
+      cap.querySelector('.cd').textContent = 'Soir ' + (i + 1) + ' · ' + p.d;
+      cap.querySelector('.co').textContent = p.o;
+      cap.querySelector('.cc').textContent = p.c;
+      Snd.sfx('chime', {n:(i % 7) + 1}); buzz(14);
+      i++;
+      if(i === 7 || i === 14){
+        if(i === 14) line2(CIEL_PAGES[13], CIEL_PAGES[9]);
+        names[i === 7 ? 0 : 1].classList.add('on');
+        Snd.sfx('shimmer'); buzz([30, 40, 60]);
+        top.textContent = i === 7 ? "La première constellation. Encore sept soirs." : "Quatorze soirs. Ton ciel est complet.";
+        announce(top.textContent);
+        await sleep(RM ? 600 : 2200);
+        if(i === 14){ await sleep(RM ? 300 : 1200); res('win'); return; }
+        top.textContent = "Touche l'étoile qui brille";
+      } else await sleep(RM ? 100 : 380);
+      busy = false; if(g.alive) setCur();
     }
-    async function end(m){
-      if(!g.alive) return;
-      mem.mot = m; remember('dossier', mem.dossier);
-      Snd.sfx('chime', {n:5}); buzz(30);
-      await sleep(500); res('win');
-    }
-    show();
+    stars.forEach((s, k) => {
+      s.addEventListener('pointerdown', e => { e.preventDefault(); hit(k); });
+      s.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); hit(k); } });
+    });
+    setCur();
   });
 }
-/* Le texte du dossier, tel qu'elle l'enverra */
-function dossierText(){
-  const L = ['📜 Dossier céleste de la princesse du 13', ''];
-  (mem.dossier || []).forEach(d => L.push('• ' + d.k + ' : ' + (d.a || 'mystère')));
-  L.push('• Attirance : hors échelle');
-  if(mem.mot) L.push('', 'Un mot pour toi : « ' + mem.mot + ' »');
-  L.push('', '— Transmis par le greffier céleste');
-  return L.join('\n');
-}
-async function sendDossier(b){
-  const text = dossierText();
-  try{
-    if(navigator.share){ await navigator.share({text:text}); b.textContent = 'Dossier transmis ✓'; return; }
-  }catch(e){ if(e && e.name === 'AbortError') return; }
-  try{ await navigator.clipboard.writeText(text); b.textContent = 'Copié ✓ Colle-le dans votre conversation'; }
-  catch(e){ txt.className = 'txt'; txt.style.whiteSpace = 'pre-line'; txt.style.fontSize = '.9rem'; txt.textContent = text; b.textContent = 'Copie le texte ci-dessus'; }
-}
 
-/* Chapitre III — le coup de tampon, au bon moment */
-function stampTiming(doc){
+/* Chapitre IV — le masque : garder le doigt dessus jusqu'à ce qu'il se fende et tombe */
+const MASQUE = '<svg viewBox="0 0 200 124" aria-hidden="true"><defs><linearGradient id="mqg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9cf92"/><stop offset=".45" stop-color="#b8924f"/><stop offset="1" stop-color="#6e5326"/></linearGradient></defs>'
+  + '<path d="M8 42C26 8 80 6 100 30C120 6 174 8 192 42C190 84 152 110 120 96C110 92 106 80 100 80C94 80 90 92 80 96C48 110 10 84 8 42Z" fill="url(#mqg)" stroke="#4a3818" stroke-width="2"/>'
+  + '<path d="M38 52C46 36 72 34 84 50C74 64 48 66 38 52Z M162 52C154 36 128 34 116 50C126 64 152 66 162 52Z" fill="#0a0a0a"/>'
+  + '<g fill="none" stroke="#fff3d0" stroke-opacity=".55" stroke-width="1.4"><path d="M24 34c14-12 40-16 60-6"/><path d="M176 34c-14-12-40-16-60-6"/><path d="M100 36v24"/><path d="M30 76c12 10 30 14 46 10M170 76c-12 10-30 14-46 10"/></g>'
+  + '<g fill="#8b0000"><circle cx="100" cy="66" r="4"/></g>'
+  + '<g fill="none" stroke="#120c06" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+  + '<path class="crk" d="M100 30l-4 12 6 8-5 10"/>'
+  + '<path class="crk" d="M97 60l-12 6-8 14M102 50l14 4 10-8 12 2"/>'
+  + '<path class="crk" d="M85 66l-20 -2-14 8M126 46l8 14 16 6M100 80l2 14"/>'
+  + '</g></svg>';
+function crackMask(scene){
   return new Promise(res => {
-    const zone = doc.querySelector('.cachet'), tgt = el('div', 'cachet-t'), st = html('div', 'stamper', '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="24" y="2" width="16" height="22" rx="7" fill="#5a0a12"/><rect x="14" y="24" width="36" height="10" rx="3" fill="#8b0000"/><rect x="8" y="36" width="48" height="12" rx="2" fill="#b3001b"/></svg>');
-    zone.append(tgt, st);
-    const tx = rnd(.3, .7); tgt.style.left = (tx * 100 - 17).toFixed(1) + '%';
-    let t = 0, last = performance.now(), x = .5, tries = 0, done = false, busy = false;
-    clearActs(); const b = btn('Tamponner !', 'primary'); acts.append(b); focusSoft(b);
+    const glow = el('div', 'masque-glow');
+    const mk = el('button', 'masque'); mk.type = 'button'; mk.innerHTML = MASQUE;
+    mk.setAttribute('aria-label', 'Le masque de Dieu. Garde le doigt appuyé, ou maintiens la barre Espace.');
+    const hint = el('p', 'mq-hint', 'Garde le doigt posé');
+    scene.append(glow, mk, hint); focusSoft(mk); clearActs();
+    const crk = Array.from(mk.querySelectorAll('.crk'));
+    let p = 0, holding = false, done = false, last = performance.now(), beatT = 0, shown = 0;
+    const HOLD = 3.4;
+    const on = e => { if(done) return; holding = true; if(e && e.pointerId != null) try{ mk.setPointerCapture(e.pointerId); }catch(_){} };
+    const off = () => { holding = false; };
+    mk.addEventListener('pointerdown', e => { e.preventDefault(); on(e); });
+    mk.addEventListener('pointerup', off); mk.addEventListener('pointercancel', off); mk.addEventListener('lostpointercapture', off);
+    mk.addEventListener('contextmenu', e => e.preventDefault());
+    mk.addEventListener('keydown', e => { if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); on(); } });
+    mk.addEventListener('keyup', e => { if(e.key === ' ' || e.key === 'Enter') off(); });
     function loop(now){
       if(done) return;
-      const dt = (now - last) / 1000; last = now;
-      if(!busy){ t += dt; x = .5 + .42 * Math.sin(t * (2.4 + tries * .25)); st.style.left = (x * 100).toFixed(1) + '%'; }
+      const dt = Math.min(.25, (now - last) / 1000); last = now;
+      p = clamp(p + (holding ? dt / HOLD : -dt / 3), 0, 1);
+      mk.style.setProperty('--p', p.toFixed(3));
+      const want = Math.min(3, Math.floor(p * 3.3));
+      if(want > shown){ crk[shown].classList.add('on'); shown++; Snd.sfx('crack'); buzz([20, 20, 30]); nudge(mk); }
+      if(holding){ beatT -= dt; if(beatT <= 0){ Snd.sfx('beat', {soft:true}); buzz(10); beatT = .9 - .5 * p; } } else beatT = 0;
+      hint.style.opacity = holding ? 0 : 1;
+      if(p >= 1){
+        done = true; hint.remove(); crk.forEach(c => c.classList.add('on'));
+        Snd.sfx('crack'); buzz([40, 30, 90]);
+        mk.classList.add('fall'); glow.classList.add('on'); Snd.sfx('shimmer');
+        setTimeout(() => { mk.remove(); res(); }, RM ? 200 : 1700);
+        return;
+      }
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
-    async function hit(){
-      if(busy || done) return; busy = true; tries++;
-      st.classList.add('down'); await sleep(130);
-      const good = Math.abs(x - tx) < .13 || tries >= 3;
-      const mk = el('div', 'stamp-big' + (good ? '' : ' bad')); mk.innerHTML = good ? 'Dossier<br>approuvé' : 'Raté';
-      mk.style.left = (x * 100).toFixed(1) + '%'; mk.style.setProperty('--r', rnd(-16, -6).toFixed(0) + 'deg'); zone.append(mk);
-      Snd.sfx('stamp'); buzz(good ? [80] : [30]); nudge(doc, 'thud');
-      await sleep(300); st.classList.remove('down');
-      if(good){ done = true; sceneEl.removeEventListener('pointerdown', hit); clearActs(); st.remove(); tgt.remove(); announce('Tampon : dossier approuvé'); await sleep(900); res(tries); }
-      else { txt.className = 'txt reply'; txt.textContent = tries === 1 ? "À côté. Le greffier soupire." : "Encore à côté. Il fait semblant de ne rien avoir vu."; announce(txt.textContent); await sleep(500); mk.remove(); busy = false; }
-    }
-    b.onclick = hit; sceneEl.addEventListener('pointerdown', hit);
   });
 }
 
-/* Chapitre IV — la route : une vraie course en 3D au coucher du soleil */
+/* Chapitre V — la route : une vraie course en 3D au coucher du soleil, en voiture */
 function Runner(parent){
   const S = makeCanvas(parent, 1.5), c = S.ctx;
   const SEG = 200, RUMBLE = 3, DRAW = 140, CAMH = 1150, DEPTH = 1 / Math.tan(50 * Math.PI / 180), ROADW = 1700, LANES = 3, FOGD = 3.4;
@@ -1410,7 +1424,7 @@ function Runner(parent){
     for(let i = 0; i < h; i++) addSeg(curve, ease.io(sy, ey, (e + i) / tot));
     for(let i = 0; i < l; i++) addSeg(ease.io(curve, 0, i / l), ease.io(sy, ey, (e + h + i) / tot));
   }
-  // Le tracé : collines de lavande, grands virages, puis la descente vers le lac
+  // Le tracé : collines, grands virages, puis la descente vers la mer
   road(40, 40, 40, 0, 0);
   road(60, 60, 60, 1.6, 6);
   road(50, 40, 50, -2, 0);
@@ -1430,7 +1444,7 @@ function Runner(parent){
     const type = n > LAKE0 ? (Math.random() < .55 ? 'willow' : 'cypress') : (Math.random() < .62 ? 'cypress' : 'olive');
     add(n, type, side * rnd(1.4, 2.5));
   }
-  add(24, 'sign', -1.5, {text:'69 → 13'}); add(LAKE0 + 30, 'sign', 1.5, {text:'Le lac ♥'});
+  add(24, 'sign', -1.5, {text:'69 → 13'}); add(LAKE0 + 30, 'sign', 1.5, {text:'La mer ♥'});
   // Pétales à ramasser, placés entre les phrases du roman pour qu'on puisse les lire tranquillement
   const reading = p => ROMAN_MOTO.some(r => p >= r[0] - .03 && p <= r[0] + .14);
   for(let n = 60; n < LAKE0; n += Math.floor(rnd(38, 55))){
@@ -1516,51 +1530,41 @@ function Runner(parent){
   }
   const SPW = {petal:.1, cypress:.18, olive:.45, willow:.6, sign:.5};
 
-  /* La moto vue de dos : lui devant, elle derrière, son écharpe dans le vent */
+  /* Sa voiture vue de dos, et sur la plage arrière, une rose */
   function bike(t){
-    const W = S.W, H = S.H, bw = Math.min(W * .32, 160), u = bw / 100, sp = st.speed / MAX;
-    const bob = st.running ? Math.sin(t * 20) * .8 * sp : 0;
-    c.save(); c.translate(W / 2, H - 16 + bob); c.rotate(st.tilt);
-    c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.ellipse(0, 0, 46 * u, 8 * u, 0, 0, 7); c.fill();
-    c.fillStyle = '#070707'; rr(-9 * u, -40 * u, 18 * u, 40 * u, 7 * u); c.fill();
-    c.fillStyle = '#202020'; const off = (t * sp * 40) % 6;
-    for(let y = -38; y < -3; y += 6){ const yy = y + off; if(yy < -3) c.fillRect(-7 * u, yy * u, 14 * u, 1.6 * u); }
-    const ch = c.createLinearGradient(0, -31 * u, 0, -21 * u); ch.addColorStop(0, '#e8e0d6'); ch.addColorStop(.5, '#6a625c'); ch.addColorStop(1, '#2a2622');
-    c.fillStyle = ch; rr(-31 * u, -31 * u, 11 * u, 9 * u, 4 * u); c.fill(); rr(20 * u, -31 * u, 11 * u, 9 * u, 4 * u); c.fill();
-    c.fillStyle = '#121212'; c.beginPath(); c.ellipse(0, -47 * u, 25 * u, 11 * u, 0, Math.PI, 0); c.fill(); rr(-25 * u, -49 * u, 50 * u, 9 * u, 3 * u); c.fill();
+    const W = S.W, H = S.H, bw = Math.min(W * .44, 210), u = bw / 100, sp = st.speed / MAX;
+    const bob = st.running ? Math.sin(t * 16) * .5 * sp : 0;
+    c.save(); c.translate(W / 2, H - 18 + bob); c.rotate(st.tilt * .5);
+    c.fillStyle = 'rgba(0,0,0,.55)'; c.beginPath(); c.ellipse(0, 2 * u, 58 * u, 9 * u, 0, 0, 7); c.fill();
+    // roues
+    c.fillStyle = '#050505'; rr(-50 * u, -14 * u, 15 * u, 15 * u, 3 * u); c.fill(); rr(35 * u, -14 * u, 15 * u, 15 * u, 3 * u); c.fill();
+    // habitacle
+    c.fillStyle = '#0d0d10'; c.beginPath(); c.moveTo(-41 * u, -40 * u); c.lineTo(-31 * u, -68 * u); c.quadraticCurveTo(0, -72 * u, 31 * u, -68 * u); c.lineTo(41 * u, -40 * u); c.closePath(); c.fill();
+    // lunette arrière, qui reflète le couchant
+    const lg = c.createLinearGradient(0, -66 * u, 0, -43 * u); lg.addColorStop(0, 'rgba(255,170,110,.55)'); lg.addColorStop(.6, 'rgba(120,50,60,.6)'); lg.addColorStop(1, '#1a1216');
+    c.fillStyle = lg; c.beginPath(); c.moveTo(-34 * u, -43 * u); c.lineTo(-27 * u, -64 * u); c.quadraticCurveTo(0, -67 * u, 27 * u, -64 * u); c.lineTo(34 * u, -43 * u); c.closePath(); c.fill();
+    // lui, au volant (à gauche)
+    c.fillStyle = '#050506'; c.beginPath(); c.arc(-13 * u, -53 * u, 7 * u, 0, 7); c.fill(); c.fillRect(-22 * u, -47 * u, 18 * u, 5 * u);
+    // la rose sur la plage arrière
+    c.strokeStyle = '#3f5236'; c.lineWidth = 1.4 * u; c.beginPath(); c.moveTo(10 * u, -44 * u); c.lineTo(24 * u, -46 * u); c.stroke();
+    const rg = c.createRadialGradient(9 * u, -46 * u, 0, 9 * u, -46 * u, 4 * u); rg.addColorStop(0, '#ff5a72'); rg.addColorStop(1, '#8b0016');
+    c.fillStyle = rg; c.beginPath(); c.arc(9 * u, -46 * u, 3.6 * u, 0, 7); c.fill();
+    // carrosserie
+    const bg = c.createLinearGradient(0, -42 * u, 0, -8 * u); bg.addColorStop(0, '#1c1c20'); bg.addColorStop(1, '#09090b');
+    c.fillStyle = bg; rr(-52 * u, -42 * u, 104 * u, 32 * u, 7 * u); c.fill();
+    c.strokeStyle = 'rgba(255,150,90,.5)'; c.lineWidth = 1.4 * u;
+    c.beginPath(); c.moveTo(-31 * u, -68 * u); c.quadraticCurveTo(0, -72 * u, 31 * u, -68 * u); c.stroke();
+    c.beginPath(); c.moveTo(-50 * u, -41 * u); c.lineTo(50 * u, -41 * u); c.stroke();
+    // feux arrière
     c.save(); c.globalCompositeOperation = 'lighter';
-    const tl = c.createRadialGradient(0, -45 * u, 0, 0, -45 * u, 30 * u); tl.addColorStop(0, 'rgba(255,60,70,.85)'); tl.addColorStop(1, 'rgba(255,0,0,0)');
-    c.fillStyle = tl; c.fillRect(-30 * u, -75 * u, 60 * u, 60 * u); c.restore();
-    c.fillStyle = '#ff3346'; rr(-12 * u, -48 * u, 24 * u, 4.5 * u, 2 * u); c.fill();
-    c.fillStyle = '#e9dcc4'; rr(-9 * u, -40 * u, 18 * u, 7 * u, 1 * u); c.fill();
-    c.fillStyle = '#2b1d12'; c.font = '600 ' + (4.6 * u).toFixed(1) + 'px Inter, Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('69 ♥ 13', 0, -36.4 * u);
-    // lui
-    c.fillStyle = '#0c0c0e'; c.beginPath(); c.ellipse(0, -104 * u, 37 * u, 15 * u, 0, 0, 7); c.fill();
-    c.beginPath(); c.arc(0, -134 * u, 17 * u, 0, 7); c.fill();
-    const hg = c.createRadialGradient(-6 * u, -141 * u, 0, -6 * u, -141 * u, 10 * u); hg.addColorStop(0, 'rgba(255,220,180,.45)'); hg.addColorStop(1, 'rgba(255,220,180,0)');
-    c.fillStyle = hg; c.beginPath(); c.arc(0, -134 * u, 17 * u, 0, 7); c.fill();
-    c.strokeStyle = 'rgba(255,150,90,.55)'; c.lineWidth = 1.6 * u;
-    c.beginPath(); c.arc(0, -134 * u, 17 * u, Math.PI * 1.15, Math.PI * 1.85); c.stroke();
-    c.beginPath(); c.ellipse(0, -104 * u, 37 * u, 15 * u, 0, Math.PI * 1.1, Math.PI * 1.9); c.stroke();
-    // elle
-    c.fillStyle = '#1d1517'; c.beginPath(); c.moveTo(-23 * u, -54 * u); c.lineTo(23 * u, -54 * u); c.lineTo(18 * u, -98 * u); c.lineTo(-18 * u, -98 * u); c.closePath(); c.fill();
-    c.strokeStyle = '#1d1517'; c.lineCap = 'round'; c.lineWidth = 7 * u;
-    c.beginPath(); c.moveTo(-16 * u, -90 * u); c.quadraticCurveTo(-36 * u, -82 * u, -30 * u, -70 * u); c.stroke();
-    c.beginPath(); c.moveTo(16 * u, -90 * u); c.quadraticCurveTo(36 * u, -82 * u, 30 * u, -70 * u); c.stroke();
-    // son écharpe rouge qui flotte au vent
-    c.strokeStyle = '#b3122e'; c.lineWidth = 5 * u; c.beginPath(); c.moveTo(5 * u, -97 * u);
-    for(let i = 1; i <= 7; i++) c.lineTo(5 * u + i * 4.5 * u + Math.sin(t * 9 - i * .9) * i * 1.4 * u * (.3 + sp), -97 * u + i * 6.5 * u);
-    c.stroke();
-    // ses cheveux
-    const wv = Math.sin(t * 7) * 5 * u * (st.running ? 1 : .3);
-    c.fillStyle = '#2a0d10';
-    c.beginPath(); c.moveTo(-11 * u, -104 * u); c.quadraticCurveTo(-32 * u + wv, -90 * u, -44 * u + wv * 1.6, -72 * u); c.quadraticCurveTo(-24 * u, -84 * u, -4 * u, -95 * u); c.closePath(); c.fill();
-    c.beginPath(); c.moveTo(-6 * u, -104 * u); c.quadraticCurveTo(-20 * u + wv, -88 * u, -26 * u + wv * 1.3, -66 * u); c.quadraticCurveTo(-12 * u, -82 * u, 0, -95 * u); c.closePath(); c.fill();
-    c.fillStyle = '#161616'; c.beginPath(); c.arc(0, -110 * u, 13.5 * u, 0, 7); c.fill();
-    const hg2 = c.createRadialGradient(-5 * u, -116 * u, 0, -5 * u, -116 * u, 8 * u); hg2.addColorStop(0, 'rgba(255,230,200,.4)'); hg2.addColorStop(1, 'rgba(255,230,200,0)');
-    c.fillStyle = hg2; c.beginPath(); c.arc(0, -110 * u, 13.5 * u, 0, 7); c.fill();
-    c.strokeStyle = 'rgba(201,169,110,.85)'; c.lineWidth = 1.5 * u; c.beginPath(); c.arc(0, -110 * u, 13.5 * u, Math.PI * 1.1, Math.PI * 1.9); c.stroke();
-    c.fillStyle = '#d0213f'; c.beginPath(); c.arc(5 * u, -114 * u, 2.4 * u, 0, 7); c.fill();
+    [-42, 42].forEach(fx => { const tl = c.createRadialGradient(fx * u, -32 * u, 0, fx * u, -32 * u, 26 * u); tl.addColorStop(0, 'rgba(255,50,60,.8)'); tl.addColorStop(1, 'rgba(255,0,0,0)'); c.fillStyle = tl; c.fillRect((fx - 26) * u, -58 * u, 52 * u, 52 * u); });
+    c.restore();
+    c.fillStyle = '#ff3346'; rr(-50 * u, -36 * u, 18 * u, 7 * u, 2 * u); c.fill(); rr(32 * u, -36 * u, 18 * u, 7 * u, 2 * u); c.fill();
+    c.fillStyle = 'rgba(255,90,100,.7)'; c.fillRect(-32 * u, -33.5 * u, 64 * u, 1.4 * u);
+    // plaque
+    c.fillStyle = '#e9dcc4'; rr(-15 * u, -25 * u, 30 * u, 8 * u, 1 * u); c.fill();
+    c.fillStyle = '#2b1d12'; c.font = '600 ' + (5 * u).toFixed(1) + 'px Inter, Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('69 → 13', 0, -20.8 * u);
+    c.fillStyle = '#050505'; rr(-52 * u, -12 * u, 104 * u, 5 * u, 2 * u); c.fill();
     c.restore();
   }
   /* Effets : lignes de vitesse, pétales qui volent, reflets du soleil, vignette */
@@ -1640,7 +1644,7 @@ function Runner(parent){
       if(s.fog < 1){ c.globalAlpha = 1 - s.fog; c.fillStyle = fogCol; c.fillRect(0, y2, W, y1 - y2); c.globalAlpha = 1; }
       maxy = y1;
     }
-    // Au bout de la route : le lac, avec le soleil qui s'y reflète
+    // Au bout de la route : la mer, avec le soleil qui s'y reflète
     if(ended && maxy > hy + 6){
       const top = hy + 6, sx = st.sun ? st.sun[0] : W / 2;
       const lg = c.createLinearGradient(0, top, 0, maxy); lg.addColorStop(0, mix('#ffb070', '#f08a5a', prog)); lg.addColorStop(.35, '#a8504a'); lg.addColorStop(1, '#2a1a30');
@@ -1720,7 +1724,7 @@ function gameRide(g, R){
     const tick = () => {
       if(!g.alive) return;
       const p = clamp(R.prog(), 0, 1);
-      hp.textContent = R.st.petals; hs.textContent = Math.round(R.st.speed / R.MAX * 112);
+      hp.textContent = R.st.petals; hs.textContent = Math.round(R.st.speed / R.MAX * 130);
       rbI.style.width = (p * 100).toFixed(1) + '%'; rbB.style.left = (p * 100).toFixed(1) + '%';
       if(R.st.done){
         const a = el('div', 'arrive'); g.area.append(a); Snd.scene({wind:.2});
@@ -1732,7 +1736,7 @@ function gameRide(g, R){
   });
 }
 
-/* Chapitre V — battre au rythme du cœur */
+/* Chapitre VI — battre au rythme du cœur */
 function heartbeat(scene){
   return new Promise(res => {
     const dome = scene.querySelector('.dome');
@@ -1872,11 +1876,11 @@ async function prologue(){
   const sc = setScene(sceneRoom({life:.12}));
   Music.preload('reve');
   await line("Il était une fois, au bord de la Méditerranée, un royaume où il fait toujours beau. On l'appelait le 13.", {cls:'lettrine'});
-  await line("Sa princesse avait tout : la mer, le soleil, des chats, et une patience très limitée pour les princes charmants.");
+  await line("Sa princesse avait de la musique dans les oreilles du matin au soir, des mangas plein la tête, et un rêve : ouvrir un jour sa propre boutique.");
   await line("Sur sa table, sous une cloche de verre, fanait la dernière rose du royaume. Diagnostic des botanistes : manque sévère de romantisme.");
   await line("Ce soir, la vitre est couverte de buée. Essuie-la du bout du doigt.", {wait:false});
   await wipeFog(sc.querySelector('.win'));
-  await line("La lune, la mer, et pas un prince à l'horizon. Aucune importance : tu as l'habitude de te sauver toute seule.");
+  await line("La lune, la mer, et pas un prince à l'horizon. Aucune importance : une princesse du 13 n'attend personne.");
 }
 
 async function ch1(){
@@ -1884,7 +1888,7 @@ async function ch1(){
   setProgress(1);
   setScene(sceneRoom({life:.1}));
   Music.preload('quatre');
-  await line("Minuit. Tu prends ton téléphone, ta seule baguette magique.", {cls:'lettrine'});
+  await line("Un soir de novembre. Tu prends ton téléphone, ta seule baguette magique.", {cls:'lettrine'});
   await line("Quelque part dans les étoiles, une phrase t'attend. La plus vraie que tu connaisses.");
   await playGame({title:'Les mots-étoiles', how:"Les mots tombent du ciel. Touche-les dans le bon ordre pour écrire ta phrase. Les autres, laisse-les filer."}, gameWords);
   const roofs = el('div', '');
@@ -1902,17 +1906,17 @@ async function ch2(){
   const fog = setScene(sceneFog());
   Music.preload('dossier');
   fog.append(el('span', 'travel'));
-  await line("Au nord, dans la brume du 69, vit un prince ténébreux. Il lit trop, dort peu, et se fait appeler Dieu. Personne n'a osé le contredire.", {cls:'lettrine'});
+  await line("Au nord, dans la brume du 69, vit un prince ténébreux qui se fait appeler Dieu. Personne n'a osé le contredire.", {cls:'lettrine'});
   // l'écran verrouillé
   const lockS = el('div', '');
-  lockS.innerHTML = '<div class="sky fogsky"></div><div class="center"><div class="lock"><svg class="lock-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/></svg><p class="lock-t">23:47</p><p class="lock-d">Le royaume dort</p></div></div>';
+  lockS.innerHTML = '<div class="sky fogsky"></div><div class="center"><div class="lock"><svg class="lock-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/></svg><p class="lock-t">23:47</p><p class="lock-d">Jeudi 12 novembre</p></div></div>';
   const n = el('button', 'notif'); n.type = 'button';
   n.setAttribute('aria-label', 'Notification de prince.tenebreux : a commenté ta publication. Ouvrir.');
   n.innerHTML = '<span class="notif-i">' + CAT_MINI + '</span><span class="notif-b"><b>prince.tenebreux</b><span>a commenté ta publication</span></span><span class="notif-w">maintenant</span>';
   lockS.querySelector('.lock').append(n);
   setScene(lockS);
   const opened = new Promise(r => n.addEventListener('click', r, {once:true}));
-  await line("Ton téléphone vibre dans le noir.", {wait:false});
+  await line("Le 12 novembre, ton téléphone vibre dans le noir.", {wait:false});
   await sleep(RM ? 200 : 700);
   n.classList.add('show'); Snd.sfx('notif'); buzz([40, 70, 40]); focusSoft(n);
   await line("Touche la notification.", {wait:false});
@@ -1927,172 +1931,160 @@ async function ch2(){
   const c = await ask("Ton pouce hésite au-dessus de son nom.", ["L'ignorer, avec dignité", "Ouvrir son profil"]);
   await line(c === 0 ? "Dignité tenue : quatre secondes. Ton pouce a cliqué tout seul." : "Aucune hésitation. On respecte.", {cls:'reply'});
   const door = setScene(sceneDoor());
-  Music.preload('dossier');
   await line("Sur son profil, pas de photo. Juste une porte, et en son centre une serrure en forme de cœur.");
   await line("Pas de clé. Cette porte-là s'ouvre à la chaleur. Pose ton doigt sur le cœur, et ne le lâche pas.", {wait:false});
   await holdHeart(door);
   clearActs(); who.hidden = true; txt.textContent = '';
   await openDoor(door);
-  await line("De l'autre côté, un escalier de nuages. Et tout en haut, évidemment… un guichet.");
+  await line("De l'autre côté, pas de château. Juste un ciel immense, encore vide. Il attendait qu'on l'allume.");
 }
 
 async function ch3(){
   await curtain('Chapitre III', CHAPITRES[3], 'dossier');
   setProgress(3);
-  setScene(sceneDesk());
-  Music.preload('route');
-  await line("Au ciel, on ne rencontre pas un dieu comme ça. Il faut d'abord passer au Bureau des Expéditions Divines.", {cls:'lettrine'});
-  await line("Derrière le guichet, un chat noir tamponne des nuages. Il te regarde de haut en bas. Puis de bas en haut. Deux fois.");
-  await line("« La princesse du 13. Le destinataire a exigé un dossier complet. Il veut tout savoir de vous. Absolument tout. »", {who:'Le greffier'});
-  await line("« Répondez avec le cœur. Le dossier ne lui sera transmis qu'avec votre accord, à la fin du conte. »", {who:'Le greffier'});
-  await playGame({title:'Le dossier céleste', how:"Dix questions sur toi. Pas de bonne ou de mauvaise réponse : choisis celle qui te ressemble. À la fin, c'est toi qui décides de lui envoyer ou non.", go:'Ouvrir le dossier'}, gameDossier);
-  await line("« Dernière rubrique : l'attirance. On mesure. » L'aiguille de son appareil s'affole et se bloque au bout du cadran. « Encore un de cassé. Je note : hors échelle. »", {who:'Le greffier'});
-  // Le parchemin
-  const P = el('div', '');
-  P.innerHTML = '<div class="sky">' + STARS + '</div>';
-  const doc = el('div', 'parch');
-  doc.innerHTML = '<p class="parch-h">Dossier céleste</p><p class="parch-ref">Formulaire n° 13-69 · Expédition de princesse</p>'
-    + '<div class="prow"><span>Expéditrice</span><span>La princesse du 13</span></div>'
-    + '<div class="prow"><span>Destinataire</span><span>Dieu, du 69</span></div>'
-    + '<div class="prow"><span>Distance</span><span>4 h de route</span></div>'
-    + '<div class="prow"><span>Attirance</span><span>Hors échelle</span></div>'
-    + '<div class="cachet"><span class="cachet-l">Cachet de l\'administration</span></div>';
-  P.append(doc); setScene(P); fit(doc);
-  await sleep(250);
-  await line("« Il ne manque que le cachet. C'est vous qui tamponnez. Visez le cadre. »", {who:'Le greffier', wait:false});
-  await stampTiming(doc);
-  await line("DOSSIER APPROUVÉ. Note du greffier, dans la marge : « Jamais vu un dieu aussi impatient. Il a appelé trois fois. »");
+  const N = el('div', '');
+  N.innerHTML = '<div class="sky">' + STARS + '<div class="moon"></div></div>';
+  setScene(N);
+  Music.preload('nuit');
+  await line("Trois soirs plus tard, une chouette s'est posée sur ta fenêtre. Elle apportait un grimoire, et une règle : une page par soir, à 21 h. Pas une minute avant.", {cls:'lettrine'});
+  await line("Chaque soir, une citation, une question, et une étoile de plus dans ton ciel. Signé : Dieu.");
+  await line("Tu te souviens de ces soirs-là ? Rallume-les.", {wait:false});
+  await playGame({title:'Le ciel du grimoire', how:"Quatorze soirs, quatorze étoiles. Touche l'étoile qui brille, puis la suivante, pour rallumer ton ciel.", go:'Rallumer le ciel'}, gameCiel);
+  await line("Quatorze soirs. Tu as suivi une voix sans jamais voir de visage. Comme Eurydice. Mais sans les Enfers, et avec beaucoup plus d'animés.");
 }
 
-/* Le pique-nique au bord du lac, au coucher du soleil */
-function scenePicnic(){
+async function ch4(){
+  await curtain('Chapitre IV', CHAPITRES[4], 'nuit');
+  setProgress(4);
+  const M = el('div', '');
+  M.innerHTML = '<div class="sky">' + STARS + '</div>';
+  setScene(M);
+  Music.preload('lettre');
+  await line("Le quatorzième soir, Dieu a fini par l'avouer : il n'est pas vraiment Dieu. Pas de nuage, pas de barbe blanche. Il ne sait même pas changer l'eau en vin.", {cls:'lettrine'});
+  await line("Soir après soir, il t'avait laissé des indices. Il préfère le piano à l'opéra. Il aime que tout soit bien rangé, et partir parfois sur un coup de tête.");
+  await line("Et un soir, il a écrit une phrase qu'il n'avait jamais dite à personne :");
+  await line("« L'amour me fait peur, mais j'y crois. »", {cls:'quote', speed:40});
+  await line("Il ne reste qu'un masque entre vous. Garde ton doigt dessus jusqu'à ce qu'il cède.", {wait:false});
+  await crackMask(M);
+  await line("Derrière, pas de dieu. Un garçon du 69 qui s'est construit seul, et qui avait perdu l'habitude d'être deux.");
+  await line("Pour venir jusqu'à toi, il lui a fallu un peu de route. Et beaucoup de courage.");
+}
+
+/* L'arrivée : la mer, une rue, une fenêtre allumée */
+function sceneArrive(){
   const d = el('div', 'picnic');
   d.innerHTML = '<div class="sky picsky"></div>'
     + '<svg viewBox="0 0 360 400" preserveAspectRatio="xMidYMax slice" aria-hidden="true">'
-    + '<defs><radialGradient id="psun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff4d6"/><stop offset=".6" stop-color="#ffc078"/><stop offset="1" stop-color="#ff9a5a"/></radialGradient>'
-    + '<radialGradient id="pglow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffc890" stop-opacity=".6"/><stop offset="1" stop-color="#ff9060" stop-opacity="0"/></radialGradient>'
-    + '<linearGradient id="plake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4a865"/><stop offset=".35" stop-color="#a8504a"/><stop offset="1" stop-color="#1d1022"/></linearGradient></defs>'
-    + '<circle cx="232" cy="226" r="80" fill="url(#pglow)"/><circle cx="232" cy="226" r="24" fill="url(#psun)"/>'
-    + '<path d="M0 232 C40 214 80 222 120 210 C160 198 200 222 250 214 C300 206 330 222 360 216 V240 H0Z" fill="#4a1830"/>'
-    + '<rect x="0" y="236" width="360" height="100" fill="url(#plake)"/>'
-    + '<g fill="#ffd2a0">' + [0, 1, 2, 3, 4, 5, 6, 7].map(i => '<rect class="glint" style="animation-delay:-' + (i * .37).toFixed(2) + 's" x="' + (232 - (8 + i * 5)) + '" y="' + (242 + i * 9) + '" width="' + (16 + i * 10) + '" height="1.6" opacity="' + (.75 - i * .07).toFixed(2) + '"/>').join('') + '</g>'
-    + '<path d="M0 318 C80 306 160 314 240 308 C300 304 340 312 360 310 V400 H0Z" fill="#140a10"/>'
-    + '<g fill="#0c0709"><rect x="26" y="214" width="7" height="106"/><ellipse cx="30" cy="214" rx="44" ry="24"/></g><g stroke="#0c0709" stroke-width="2" fill="none" stroke-linecap="round">' + [-34, -24, -14, -4, 6, 16, 26, 36, 46, 58, 68].map((d, i) => '<path d="M' + (30 + d) + ' 220 q' + (i % 2 ? 3 : -3) + ' 26 ' + (i % 3 - 1) * 2 + ' ' + (44 + (i * 7) % 26) + '"/>').join('') + '</g>'
-    + '<g stroke="#1e1214" stroke-width="1.4" fill="none">' + [70, 84, 250, 264, 300, 318].map(x => '<path d="M' + x + ' 320 q2 -12 6 -18"/>').join('') + '</g>'
-    + '<path d="M96 344 L232 336 L254 366 L88 374Z" fill="#6a1022"/><g stroke="#8f1d33" stroke-width="2"><path d="M110 343 L104 372"/><path d="M140 341 L136 371"/><path d="M170 339 L168 370"/><path d="M200 338 L200 368"/><path d="M228 336 L232 366"/></g>'
-    + '<g transform="translate(206 318)"><path d="M0 12 h28 l-3 14 h-22z" fill="#5a3a22"/><path d="M4 12 a10 10 0 0 1 20 0" fill="none" stroke="#5a3a22" stroke-width="2.4"/><rect x="5" y="8" width="9" height="5" rx="2" fill="#c98a4a"/><rect x="15" y="9" width="8" height="4" rx="2" fill="#b37a40"/></g>'
-    + '<g transform="translate(244 330)"><circle r="16" fill="url(#pglow)"/><rect x="-3" y="-6" width="6" height="9" rx="1" fill="#ffd27a"/></g>'
-    + '<g fill="#050304">'
-    + '<path d="M124 342 C122 322 126 306 132 300 L156 300 C162 306 164 322 162 342Z"/><circle cx="144" cy="288" r="11"/>'
-    + '<path d="M164 344 C163 326 166 312 170 306 L184 306 C188 312 190 326 190 344Z"/><circle cx="168" cy="297" r="9" transform="rotate(-18 168 297)"/>'
-    + '<path d="M161 296 C150 306 152 324 160 334 C158 318 162 306 170 302Z"/>'
-    + '<path d="M156 304 C170 300 184 308 188 322" fill="none" stroke="#050304" stroke-width="5" stroke-linecap="round"/>'
-    + '</g>'
-    + '<g fill="none" stroke="rgba(255,160,100,.6)" stroke-width="1.2"><path d="M135 281 a11 11 0 0 1 18 2"/><path d="M160 292 a9 9 0 0 1 14 -2"/></g>'
-    + '<g transform="translate(286 314)" fill="none" stroke="#070506" stroke-width="4"><circle cx="0" cy="22" r="11"/><circle cx="44" cy="22" r="11"/><path d="M0 22 L16 6 L34 6 L44 22 M16 6 L10 -4 M34 6 L40 -6 L48 -6" stroke-linecap="round"/></g>'
-    + '<path d="M296 316 L326 316 L322 324 L300 324Z" fill="#070506"/>'
-    + '<g fill="#ffd27a">' + [[60, 280], [96, 300], [270, 290], [312, 276], [200, 296], [130, 270]].map((p, i) => '<circle class="ff" style="animation-delay:-' + (i * .8).toFixed(1) + 's" cx="' + p[0] + '" cy="' + p[1] + '" r="1.6"/>').join('') + '</g>'
+    + '<defs><radialGradient id="asun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff4d6"/><stop offset=".6" stop-color="#ffc078"/><stop offset="1" stop-color="#ff9a5a"/></radialGradient>'
+    + '<radialGradient id="aglow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffc890" stop-opacity=".6"/><stop offset="1" stop-color="#ff9060" stop-opacity="0"/></radialGradient>'
+    + '<linearGradient id="asea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4a865"/><stop offset=".35" stop-color="#a8504a"/><stop offset="1" stop-color="#1d1022"/></linearGradient></defs>'
+    + '<circle cx="110" cy="236" r="80" fill="url(#aglow)"/><circle cx="110" cy="236" r="22" fill="url(#asun)"/>'
+    + '<rect x="0" y="244" width="360" height="90" fill="url(#asea)"/>'
+    + '<g fill="#ffd2a0">' + [0, 1, 2, 3, 4, 5, 6].map(i => '<rect class="glint" style="animation-delay:-' + (i * .37).toFixed(2) + 's" x="' + (110 - (8 + i * 5)) + '" y="' + (250 + i * 10) + '" width="' + (16 + i * 10) + '" height="1.6" opacity="' + (.75 - i * .08).toFixed(2) + '"/>').join('') + '</g>'
+    + '<path d="M170 400V252h22v-14h30v20h26v-30h34v22h24v-12h54v162z" fill="#0b0709"/>'
+    + '<g fill="#e8b860"><rect x="236" y="276" width="8" height="11" opacity=".9"/><rect x="300" y="262" width="7" height="10" opacity=".5"/><rect x="200" y="290" width="6" height="9" opacity=".4"/></g>'
+    + '<circle cx="240" cy="281" r="26" fill="url(#aglow)" opacity=".7"/>'
+    + '<path d="M0 334 C60 326 120 332 170 330 V400 H0Z" fill="#140a10"/>'
+    + '<g transform="translate(70 318)"><path d="M0 18 L8 6 Q24 0 40 6 L50 18 Z" fill="#070506"/><rect x="-4" y="16" width="58" height="12" rx="4" fill="#070506"/><circle cx="8" cy="29" r="5" fill="#070506"/><circle cx="44" cy="29" r="5" fill="#070506"/><rect x="-4" y="19" width="5" height="3" fill="#ff3346" opacity=".85"/></g>'
     + '</svg>';
   return d;
 }
 
-async function ch4(){
-  await curtain('Chapitre IV', CHAPITRES[4], null);
-  setProgress(4);
+async function ch5(){
+  await curtain('Chapitre V', CHAPITRES[5], null);
+  setProgress(5);
   const L = el('div', ''); setScene(L);
   const R = Runner(L);
-  Snd.scene({engine:.5, wind:.4}); Snd.rev(0);
+  Snd.scene({engine:.35, wind:.25}); Snd.rev(0);
   Music.preload('route');
-  await line("4 h de route. C'est ce qui sépare ton royaume de sa brume. Il les a faites sans se plaindre. Presque.", {cls:'lettrine'});
-  await line("Une moto s'arrête devant chez toi. Il ne dit rien. Il te tend un casque.");
-  const r = await riddle({
-    n:"La place", q:"Où est la place de la passenger princess ?",
-    options:[
-      {label:"Devant, au guidon", reply:"Ambitieuse. Mais le guidon a déjà un dieu. Réessaie."},
-      {label:"Derrière lui, les bras autour de sa taille", ok:true, reply:""},
-      {label:"Dans la voiture suiveuse", reply:"La voiture suiveuse, c'est pour celles qui n'ont pas de dossier approuvé. Réessaie."},
-      {label:"À la maison, sous la couette", reply:"Tentant. Très tentant. Mais ce soir, c'est la route. Réessaie."}
-    ]
-  });
-  await line(r.revealed ? "Derrière lui, les bras autour de sa taille. La place t'attendait." : "Exactement. Tes bras trouvent sa taille comme s'ils la connaissaient déjà.", {cls:'reply'});
-  const pres = await ask("Il tourne légèrement la tête : « Bien installée ? »", ["« Parfaitement. »", "« Je serais mieux plus près. »"]);
-  remember('pres', pres);
-  await line(pres === 0 ? "« Parfaitement. » Tes bras, eux, serrent déjà un peu plus fort que nécessaire. Il ne s'en plaint pas." : "Tu te colles contre son dos. Il se racle la gorge, cale au démarrage et accuse la moto. Elle n'y est pour rien. Et sous le casque, il sourit.", {cls:'reply'});
-  await playGame({title:'La route au coucher du soleil', how:"Touche à gauche ou à droite de l'écran (ou glisse) pour changer de voie. Ramasse les pétales de rose. La route te raconte la suite.", go:'Monter derrière lui'}, g => gameRide(g, R));
+  await line("Le 29 novembre, il a pris la voiture. Quatre heures de route, du 69 jusqu'au 13.", {cls:'lettrine'});
+  const m = await ask("Si c'était toi qui avais choisi sa musique pour la route ?", ["Du piano", "Les openings de mes animés", "Le silence, pour qu'il répète"]);
+  remember('musique', m);
+  await line(["Bon choix. Il a justement une playlist de musique classique.", "Noté. Il les apprendra par cœur pour le retour.", "Il a essayé. Ses premières phrases n'ont pas survécu au premier péage."][m], {cls:'reply'});
+  await playGame({title:'La route du Sud', how:"Touche à gauche ou à droite de l'écran (ou glisse) pour changer de voie. Ramasse les pétales de rose : ils serviront plus tard.", go:'Prendre la route'}, g => gameRide(g, R));
   remember('petales', R.st.petals);
   R.st.running = false; R.st.speed = 0; R.stop();
   Snd.scene({wind:.15});
   Music.play('nuit', {fade:3});
   Music.preload('lettre');
-  setScene(scenePicnic());
-  await line("Au bout de la route, un lac en feu. Le soleil se couche rien que pour vous deux.");
-  await line("Une couverture, un panier, des pains au chocolat. Il avait tout prévu. Sauf l'effet que tu lui fais.");
-  const pr = await ask("Tu t'assois…", ["Contre son épaule", "Sur ses genoux"]);
-  await line(pr === 0 ? "Ta tête trouve son épaule. Il ne bouge plus d'un millimètre, de peur que tu t'en ailles." : "Il oublie de respirer. Son pain au chocolat tombe dans l'herbe. Personne ne le ramasse.", {cls:'reply'});
+  setScene(sceneArrive());
+  await line("Au bout de la route, la mer. Une rue. Ta porte.");
+  await line("Ce qui s'est passé ensuite, ce conte ne le raconte pas. Tu le sais mieux que lui.");
 }
 
-async function ch5(){
-  await curtain('Chapitre V', CHAPITRES[5], 'lettre');
-  setProgress(5);
-  const sc = setScene(sceneRoom({dawn:true, life:.05}));
+async function ch6(){
+  await curtain('Chapitre VI', CHAPITRES[6], 'lettre');
+  setProgress(6);
+  const sc = setScene(sceneRoom({life:.05}));
   Music.preload('eclosion');
-  await line("Retour chez toi, à l'aube. Sous la cloche, la rose n'a plus qu'un pétale.", {cls:'lettrine'});
-  await line((mem.petales > 1 ? "Tu ouvres la main : tes " + mem.petales + " pétales de la route glissent" : "Tu ouvres la main : un pétale de la route glisse") + " contre le verre. Il ne manque qu'un battement de cœur. Le tien.");
+  await line("Ce soir, tu es rentrée chez toi. Sous la cloche, la rose n'a plus qu'un pétale.", {cls:'lettrine'});
+  await line((mem.petales > 1 ? "Tu ouvres la main : les " + mem.petales + " pétales de la route glissent" : "Tu ouvres la main : un pétale de la route glisse") + " contre le verre. Il ne manque qu'un battement de cœur. Le tien.");
   await line("Touche l'écran quand le cercle rouge rejoint le cercle d'or.", {wait:false});
   await heartbeat(sc);
   await line("La rose se redresse. Contre la cloche, une lettre cachetée de cire rouge, marquée d'un D.");
   const E = el('div', 'room');
-  E.innerHTML = '<div class="sky dawn" style="opacity:.35">' + STARS + '</div><div class="env"><div class="env-body"></div><div class="env-flap"></div><div class="wax"><span class="wax-l">D</span><span class="wax-r">D</span><i class="crack"></i></div></div>';
+  E.innerHTML = '<div class="sky" style="opacity:.5">' + STARS + '</div><div class="env"><div class="env-body"></div><div class="env-flap"></div><div class="wax"><span class="wax-l">D</span><span class="wax-r">D</span><i class="crack"></i></div></div>';
   setScene(E);
   await line("Brise le sceau d'un coup de doigt, dans le sens que tu veux.", {wait:false});
   await breakSeal(E);
-  const after = sceneRoom({dawn:true, life:1}); after.querySelector('.dome').classList.add('glow');
+  const after = sceneRoom({life:1}); after.querySelector('.dome').classList.add('glow');
   setScene(after);
   const LETTRE = [
-    "Princesse, tu as écrit un jour que tu rêvais de cet amour dont tout le monde parle.",
-    "Je ne sais pas encore si c'est moi. Mais j'ai fait 4 h de route pour avoir le droit d'essayer.",
-    "Et pour voir en vrai le sourire que tu caches derrière tes messages. Verdict : il valait chaque kilomètre."
+    "Princesse, un soir de novembre, tu as écrit que tu rêvais de cet amour dont tout le monde parle.",
+    "Je ne sais pas encore ce que nous serons. Je sais seulement qu'aujourd'hui, j'ai fait quatre heures de route pour commencer à le découvrir.",
+    "Pendant quatorze soirs, tu as suivi ma voix sans voir mon visage. Maintenant, tu l'as vu. J'espère qu'il ne t'a pas fait fuir.",
+    "Je suis reparti, mais je ne disparais pas. Le grimoire continue. Et cette fois, on l'écrira à deux."
   ];
   for(const p of LETTRE) await line(p, {paper:true, speed:36});
-  await line("Regarde ta main.", {paper:true, cls:'big', speed:80, wait:false});
-  await sleep(1400);
-  const B = el('div', ''); B.innerHTML = '<div class="sky dawn"></div>'; setScene(B);
+  await line("Regarde la rose que je t'ai offerte.", {paper:true, cls:'big', speed:80, wait:false});
+  await sleep(1600);
+  const B = el('div', ''); B.innerHTML = '<div class="sky">' + STARS + '</div>'; setScene(B);
   clearActs(); txt.textContent = ''; box.className = ''; pageno.textContent = '';
   await bloomRose(B);
   await sleep(600);
   await line("Que du love for u. 🥀", {cls:'big', speed:70});
 }
 
+/* Lui dire quel bon elle a choisi (c'est elle qui choisit d'envoyer) */
+async function shareBon(b){
+  const t = "🥀 La dernière rose\nJ'ai choisi mon bon : " + BON.lignes.join(' ') + "\n" + BON.validite;
+  try{
+    if(navigator.share){ await navigator.share({text:t}); b.textContent = 'Envoyé ✓'; return; }
+  }catch(e){ if(e && e.name === 'AbortError') return; }
+  try{ await navigator.clipboard.writeText(t); b.textContent = 'Copié ✓ Colle-le dans votre conversation'; }
+  catch(e){ b.textContent = 'Fais une capture du bon'; }
+}
+
 async function epilogue(){
-  await curtain('Épilogue', CHAPITRES[6], 'fin');
-  setProgress(6); bloom = true;
+  await curtain('Épilogue', CHAPITRES[7], 'fin');
+  setProgress(7); bloom = true;
   const T = el('div', '');
-  T.innerHTML = '<div class="sky dawn" style="opacity:.45"></div>';
+  T.innerHTML = '<div class="sky" style="opacity:.6">' + STARS + '</div>';
+  setScene(T);
+  const k = await ask("Dernière page. Un bon, à ton nom. Mais c'est toi qui choisis ce qu'il y a dessus.", BONS.map(b => b.k), {cls:'lettrine'});
+  BON.lignes = BONS[k].lignes; remember('bon', k);
   const tk = el('section', 'ticket'); tk.setAttribute('aria-label', 'Le bon');
-  const memLine = ['Clause annexe : « mange-moi alors ». À traiter en personne.', mem.petales ? 'Pétales ramassés en route : ' + mem.petales + '.' : ''].filter(Boolean).join('<br>');
+  const memLine = mem.petales ? 'Pétales ramassés en route : ' + mem.petales + '.' : '';
   tk.innerHTML = '<div class="stub" aria-hidden="true">N° 001 · La dernière rose · Talon</div><div class="bon"><span class="seal" aria-hidden="true">D</span>'
     + '<p class="bon-k">Bon pour</p><p class="bon-t">' + BON.lignes.join('<br>') + '</p><p class="bon-v">' + BON.validite + '</p><p class="bon-sig">' + BON.signature + '</p>'
-    + '<p class="bon-mem">' + memLine + '</p></div>';
-  T.append(tk); setScene(T); fit(tk, .9);
-  await line("Dernière page. Un bon, à ton nom. Glisse pour le détacher.", {cls:'lettrine', wait:false});
+    + (memLine ? '<p class="bon-mem">' + memLine + '</p>' : '') + '</div>';
+  T.append(tk); fit(tk, .9);
+  await line("Bon choix. Glisse pour le détacher.", {wait:false});
   await slideTo("Glisse pour détacher ton bon");
   Snd.sfx('tear'); buzz([15, 15, 15, 15, 40]); tk.classList.add('torn');
   announce('Bon pour ' + BON.lignes.join(' ') + ' ' + BON.validite + ' Signé : Dieu.');
   await line(BON.ps, {cls:'quote', wait:false});
-  if(mem.dossier && mem.dossier.length){
-    const send = btn('Envoyer mon dossier à Dieu', 'primary'); send.onclick = () => sendDossier(send);
-    acts.append(send);
-  }
-  const keep = btn('Garder le bon dans mes photos', mem.dossier && mem.dossier.length ? '' : 'primary'); keep.onclick = () => saveBon(keep);
+  const keep = btn('Garder le bon dans mes photos', 'primary'); keep.onclick = () => saveBon(keep);
+  const send = btn('Lui dire mon choix'); send.onclick = () => shareBon(send);
   const again = btn('Relire le conte depuis le début', 'ghost'); again.onclick = restart;
-  acts.append(keep, again);
+  acts.append(keep, send, again);
 }
 
 /* =========================================================
    8. DÉMARRAGE
    ========================================================= */
-const SCENES = [prologue, ch1, ch2, ch3, ch4, ch5, epilogue];
-const NOMS = ['Prologue', 'Chapitre I', 'Chapitre II', 'Chapitre III', 'Chapitre IV', 'Chapitre V', 'Épilogue'];
+const SCENES = [prologue, ch1, ch2, ch3, ch4, ch5, ch6, epilogue];
+const NOMS = ['Prologue', 'Chapitre I', 'Chapitre II', 'Chapitre III', 'Chapitre IV', 'Chapitre V', 'Chapitre VI', 'Épilogue'];
 async function run(from){
   document.body.classList.add('playing');
   for(let i = from; i < SCENES.length; i++){ save(i); await SCENES[i](); }
@@ -2104,7 +2096,7 @@ function titleScreen(){
   setProgress(0);
   const s = load(); if(s && s.mem) mem = s.mem;
   const t = sceneRoom({life:.15});
-  t.append(html('div', 'title-card', '<h1>La dernière rose</h1><p class="subtitle">Un conte en cinq chapitres</p>'));
+  t.append(html('div', 'title-card', '<h1>La dernière rose</h1><p class="subtitle">Un conte en six chapitres</p>'));
   setScene(t);
   Music.play('nuit', {vol:.8});
   who.hidden = true; txt.textContent = ''; pageno.textContent = '';
